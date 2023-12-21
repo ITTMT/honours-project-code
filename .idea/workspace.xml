@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="CargoProjects">
+    <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="e41b2302-a2e6-4147-aee7-16a3d0a8e51f" name="Changes" comment="Adding Some HTML and CSS files to test&#10;&#10;Considering some crates like HTML5Tokenizer, serde, tower-lsp, to do a lot of the heavy lifting and focus more on the virtual file view part.">
+      <change afterPath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/.eslintrc.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/.vscode-test.mjs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/.vscode/extensions.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/.vscode/launch.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/.vscodeignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/CHANGELOG.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/README.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/extension.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/jsconfig.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/package-lock.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/package.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/test/extension.test.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/vsc-extension-quickstart.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/vscode_extension/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="HTML File" />
+        <option value="CSS File" />
+        <option value="Rust File" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MacroExpansionManager">
+    <option name="directoryName" value="t6vykl07" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 8
+}</component>
+  <component name="ProjectId" id="2Zo7ml2rBjaA2GZ4U3AwgYuyyPF" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_ADD_EXTERNAL_FILES&quot;: &quot;true&quot;,
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;Cargo.Run.executor&quot;: &quot;Run&quot;,
+    &quot;DefaultHtmlFileTemplate&quot;: &quot;HTML File&quot;,
+    &quot;JavaScript Debug.test.html.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;list.type.of.created.stylesheet&quot;: &quot;CSS&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;org.rust.cargo.project.model.PROJECT_DISCOVERY&quot;: &quot;true&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\University\honours-project-code\src\lexer\html" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Cargo.Run">
+    <configuration name="Run" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+      <option name="command" value="run --package honours-project-code --bin honours-project-code" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <option name="emulateTerminal" value="true" />
+      <option name="channel" value="DEFAULT" />
+      <option name="requiredFeatures" value="true" />
+      <option name="allFeatures" value="false" />
+      <option name="withSudo" value="false" />
+      <option name="buildTarget" value="REMOTE" />
+      <option name="backtrace" value="SHORT" />
+      <envs />
+      <option name="isRedirectInput" value="false" />
+      <option name="redirectInputPath" value="" />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="test.html" type="JavascriptDebugType" temporary="true" nameIsGenerated="true" uri="http://localhost:63343/honours-project-code/html_files/test.html" useBuiltInWebServerPort="true">
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="JavaScript Debug.test.html" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="RustProjectSettings">
+    <option name="toolchainHomeDirectory" value="$USER_HOME$/.cargo/bin" />
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="e41b2302-a2e6-4147-aee7-16a3d0a8e51f" name="Changes" comment="" />
+      <created>1703076738278</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1703076738278</updated>
+      <workItem from="1703076740058" duration="10782000" />
+      <workItem from="1703154303892" duration="4179000" />
+    </task>
+    <task id="LOCAL-00001" summary="Initial Commit">
+      <option name="closed" value="true" />
+      <created>1703076810424</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1703076810424</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Initial Commit">
+      <option name="closed" value="true" />
+      <created>1703077038474</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1703077038474</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Adding Some HTML and CSS files to test&#10;&#10;Considering some crates like HTML5Tokenizer, serde, tower-lsp, to do a lot of the heavy lifting and focus more on the virtual file view part.">
+      <option name="closed" value="true" />
+      <created>1703105004227</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1703105004227</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
+    <MESSAGE value="Initial Commit" />
+    <MESSAGE value="Adding Some HTML and CSS files to test&#10;&#10;Considering some crates like HTML5Tokenizer, serde, tower-lsp, to do a lot of the heavy lifting and focus more on the virtual file view part." />
+    <option name="LAST_COMMIT_MESSAGE" value="Adding Some HTML and CSS files to test&#10;&#10;Considering some crates like HTML5Tokenizer, serde, tower-lsp, to do a lot of the heavy lifting and focus more on the virtual file view part." />
+  </component>
+</project>
