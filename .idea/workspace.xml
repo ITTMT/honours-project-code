@@ -8,22 +8,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e41b2302-a2e6-4147-aee7-16a3d0a8e51f" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/.eslintrc.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/.vscode-test.mjs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/.vscode/extensions.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/.vscode/launch.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/.vscodeignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/CHANGELOG.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/README.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/extension.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/jsconfig.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/package-lock.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/package.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/test/extension.test.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/vscode_extension/better-html-and-css-support/vsc-extension-quickstart.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/vscode_extension/package-lock.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples" beforeDir="false" afterPath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/.base-sample/.eslintrc.js" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/.base-sample/.gitignore" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/.base-sample/.vscode/extensions.json" beforeDir="false" />
@@ -554,6 +540,21 @@
       <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-multi-server-sample/server/src/server.ts" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-multi-server-sample/server/tsconfig.json" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-multi-server-sample/tsconfig.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-sample/.eslintignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-sample/.eslintrc.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-sample/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-sample/.vscode/extensions.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-sample/.vscode/launch.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-sample/.vscode/settings.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-sample/.vscode/tasks.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-sample/.vscodeignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-sample/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-sample/client/src/extension.ts" beforeDir="false" afterPath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-sample/client/src/extension.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-sample/package-lock.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-sample/package.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-sample/scripts/e2e.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-sample/server/src/server.ts" beforeDir="false" afterPath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-sample/server/src/server.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-sample/tsconfig.json" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-user-input-sample/.eslintrc.base.json" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-user-input-sample/.gitignore" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/vscode_extension/vscode-extension-samples/lsp-user-input-sample/.vscode/launch.json" beforeDir="false" />
@@ -1081,7 +1082,7 @@
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
     "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
-    "ts.external.directory.path": "D:\\University\\honours-project-code\\vscode_extension\\vscode-extension-samples\\lsp-sample\\node_modules\\typescript\\lib",
+    "ts.external.directory.path": "C:\\Users\\Ollie\\AppData\\Local\\Programs\\RustRover\\plugins\\javascript-impl\\jsLanguageServicesImpl\\external",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -1137,7 +1138,10 @@
       <workItem from="1704805639524" duration="606000" />
       <workItem from="1704977570090" duration="3027000" />
       <workItem from="1705419892646" duration="748000" />
-      <workItem from="1705491304262" duration="4708000" />
+      <workItem from="1705491304262" duration="5891000" />
+      <workItem from="1705574455714" duration="4035000" />
+      <workItem from="1705939247671" duration="2992000" />
+      <workItem from="1706009836706" duration="4862000" />
     </task>
     <task id="LOCAL-00001" summary="Initial Commit">
       <option name="closed" value="true" />

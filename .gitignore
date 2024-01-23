@@ -1,2 +1,4 @@
 /target
-/vscode_extension/better-html-and-css-support/node_modules
+/vscode_extension/node_modules/*
+/vscode_extension/client/node_modules/*
+/vscode_extension/server/node_modules/*
