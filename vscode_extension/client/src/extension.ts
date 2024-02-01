@@ -1,61 +1,34 @@
-/* --------------------------------------------------------------------------------------------
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
- * ------------------------------------------------------------------------------------------ */
+import * as vscode from 'vscode';
 
-import * as path from 'path';
-import { workspace, ExtensionContext } from 'vscode';
+export function activate(context : vscode.ExtensionContext) {
+	console.log('starting');
+	
+	const myScheme = 'bhc';
+	const myProvider = new class implements vscode.TextDocumentContentProvider {
+		onDidChangeEmitter = new vscode.EventEmitter<vscode.Uri>();
+		onDidChange = this.onDidChangeEmitter.event;
 
-import {
-	LanguageClient,
-	LanguageClientOptions,
-	ServerOptions,
-	TransportKind
-} from 'vscode-languageclient/node';
-
-let client: LanguageClient;
-
-export function activate(context: ExtensionContext) {
-	// The server is implemented in node
-	const serverModule = context.asAbsolutePath(
-		path.join('server', 'out', 'server.js')
-	);
-
-	// If the extension is launched in debug mode then the debug server options are used
-	// Otherwise the run options are used
-	const serverOptions: ServerOptions = {
-		run: { module: serverModule, transport: TransportKind.ipc },
-		debug: {
-			module: serverModule,
-			transport: TransportKind.ipc,
+		provideTextDocumentContent(uri: vscode.Uri): string {
+			return uri.path;
 		}
 	};
 
-	// Options to control the language client
-	const clientOptions: LanguageClientOptions = {
-		// Register the server for plain text documents
-		documentSelector: [{ scheme: 'file', language: 'css' }],
-		synchronize: {
-			// Notify the server about file changes to '.clientrc files contained in the workspace
-			fileEvents: workspace.createFileSystemWatcher('**/.clientrc')
+	context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider(myScheme, myProvider));
+
+	context.subscriptions.push(vscode.commands.registerCommand('bhc.testing123', async () => {
+		const what = await vscode.window.showInputBox({ placeHolder: 'test...'});
+		if (what) { 
+			const uri = vscode.Uri.parse('test:' + what);
+			const doc = await vscode.workspace.openTextDocument({
+				content: uri,
+				language: 'css'
+			}
+			);
+			await vscode.window.showTextDocument(doc, { preview: false});
 		}
-	};
+	}));
 
-	// Create the language client and start the client.
-	client = new LanguageClient(
-		'languageServerExample',
-		'Language Server Example',
-		serverOptions,
-		clientOptions
-	);
-
-	// Start the client. This will also launch the server
-	client.start();
+	console.log('started');
 }
 
-export function deactivate(): Thenable<void> | undefined {
-	if (!client) {
-		return undefined;
-	}
-	return client.stop();
-}
+export function deactivate() {}
