@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+let cssWindow : vscode.TextDocument; // Only have one window open at a time. Swaps depending on what item is selected.
+
 export function activate(context : vscode.ExtensionContext) {
 	console.log('starting');
 	
@@ -16,19 +18,15 @@ export function activate(context : vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider(myScheme, myProvider));
 
 	context.subscriptions.push(vscode.commands.registerCommand('bhc.testing123', async () => {
-		const what = await vscode.window.showInputBox({ placeHolder: 'test...'});
-		if (what) { 
-			const uri = vscode.Uri.parse('test:' + what);
-			const doc = await vscode.workspace.openTextDocument({
-				content: uri,
+		await vscode.window.showInputBox({ placeHolder: "test..."}).then( x => {
+			vscode.workspace.openTextDocument({
+				content: x,
 				language: 'css'
-			}
-			);
-			await vscode.window.showTextDocument(doc, { preview: false});
-		}
+			}).then (y => {
+				vscode.window.showTextDocument(y, {preview: false});
+			});
+		});
 	}));
-
-	console.log('started');
 }
 
 export function deactivate() {}
