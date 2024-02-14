@@ -1,9 +1,11 @@
 [package]
-name = "honours-project-code"
+name = "server"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-html5tokenizer = "0.5.2"
+html5gum = "0.5.7"
+tower-lsp = "0.20.0"
+tokio = {version = "1.36.0", features = ["full"]}

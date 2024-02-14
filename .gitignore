@@ -1,6 +1,5 @@
-/target
-/vscode_extension/node_modules/*
-/vscode_extension/client/node_modules/*
-/vscode_extension/client/out/*
-
-/vscode_extension/server/node_modules/*
+/vscode_extension/node_modules
+/vscode_extension/client/node_modules
+/vscode_extension/client/out
+/vscode_extension/server/target
+.idea

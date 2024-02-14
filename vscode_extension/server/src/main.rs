@@ -1,58 +1,97 @@
-mod lexer;
-
 use std::fs::File;
 use std::io::{BufReader, Read};
-use html5tokenizer::{BasicEmitter, NaiveParser, Token};
+use std::ops::Deref;
+use html5gum::{HtmlString, Token, Tokenizer};
+use tower_lsp::jsonrpc::Result;
+use tower_lsp::lsp_types::*;
+use tower_lsp::{Client, LanguageServer, LspService, Server};
 
-fn main() {
-    let file_as_string = open_file("D:/University/honours-project-code/html_files/test.html");
-
-    // println!("{}", file_as_string);
-
-    tokenize_html(&file_as_string);
+#[derive(Debug)]
+struct Backend {
+    client: Client,
 }
 
-fn open_file(file :&str) -> String {
-    let file = match File::open(file) {
-        Ok(file) => file,
-        Err(error) => panic!("Error opening file : {:?}", error)
-    };
-    let mut buf_reader = BufReader::new(file);
-    let mut contents = String::new();
-    buf_reader.read_to_string(&mut contents).expect("TODO: panic message");
-
-    return contents;
-}
-
-fn tokenize_html(file_contents :&String) {
-    let emitter = BasicEmitter::default();
-
-    for tokens in html5tokenizer::Tokenizer::new(file_contents, emitter) {
-        println!("{:?}", tokens)
+#[tower_lsp::async_trait]
+impl LanguageServer for Backend {
+    async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+        Ok(InitializeResult::default())
     }
 
-    // This kind of works, but there will be some hacky work needed to be done to convert it to JSON.
+    async fn initialized(&self, _: InitializedParams) {
+        self.client
+            .log_message(MessageType::INFO, "server initalized!")
+            .await;
+    }
 
-    // Example output
-    // Ok(Token(StartTag(StartTag { name: "html", self_closing: false, attributes: {"lang": "en"} })))
+    async fn shutdown(&self) -> Result<()> {
+        Ok(())
+    }
 }
+#[tokio::main]
+async fn main() {
+    let stdin = tokio::io::stdin();
+    let stdout = tokio::io::stdout();
+
+    let (service, socket) = LspService::new(|client| Backend { client });
+    Server::new(stdin, stdout, socket).serve(service).await;
+}
+
+// fn main() {
+//     let file_as_string = open_file("C:\\Users\\Ollie\\Documents\\CS\\honours-project-code\\html_files\\test.html");
+//     let test = tokenize_html(&file_as_string);
+
+//     println!("{:?}", test)
+// }
+
+// fn open_file(file :&str) -> String {
+//     let file = match File::open(file) {
+//         Ok(file) => file,
+//         Err(error) => panic!("Error opening file : {:?}", error)
+//     };
+//     let mut buf_reader = BufReader::new(file);
+//     let mut contents = String::new();
+//     buf_reader.read_to_string(&mut contents).expect("TODO: panic message");
+
+//     return contents;
+// }
+
+// fn tokenize_html(file_contents :&String) -> Vec<String> {
+//     let tag_name: HtmlString = HtmlString(b"link".to_vec());
+//     let href: HtmlString = HtmlString(b"href".to_vec());
+
+//     let mut css_vec: Vec<String> = vec![];
+
+//     for token in Tokenizer::new(file_contents).infallible() {
+//         match token {
+//             Token::StartTag(tag) => {
+//                 if tag.name == tag_name {
+//                     match tag.attributes.get_key_value(&href){
+//                         Some((_, value)) => {
+//                             let s = value.deref().to_vec();
+//                             let string_result = String::from_utf8_lossy(&s);
+//                             let string_value = string_result.to_string();
+
+//                             css_vec.push(string_value);
+//                         },
+//                         None => continue
+//                     }
+//                 }
+//             }
+//             _ => continue,
+//         }
+//     }
+
+//     css_vec
+// }
+
+
+
+
+// fn return_css_files(tokens: &Token) -> Vec<str> {
+//     tokens
+//     . 
+// }
 
 //TODO: Open a file (Done), read its contents(Done), turn it into tokens
 
 //TODO: Implement the Client and Server component to detect when a file has been opened and parse it.
-
-// https://github.com/microsoft/vscode/tree/main/extensions/html-language-features/server/src
-// It's Microsoft's TypeScript implementation of HTML, it's a mess to try and follow.
-// Looking at what an ideal JSON layout might be for it. What information is required to be recorded.
-
-// https://www.w3.org/TR/2011/WD-html5-20110113/tokenization.html
-
-// it might work better if it was something like
-// open tag char detected -> begin open state -> accumulate chars until white-space / special / invalid / close tag
-// char -> parse
-
-
-// inline js and css might be a pain in the arse, especially if I want to add quick editing rules, like
-// move to file. I would maybe need to write a tokenizer for both of those as well to be accessed under the same LSP.
-// HTML5Tokenizer might not be enough since it is made to only work with HTML, the goal of the project is to have
-// better interoperability between html and css, so the LSP would be better if it was context-aware of the two.

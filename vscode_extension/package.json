@@ -16,7 +16,9 @@
 	"engines": {
 		"vscode": "^1.75.0"
 	},
-	"activationEvents": [],
+	"activationEvents": [
+		"onLanguage:html"
+	],
 	"main": "./client/out/extension",
 	"contributes": {
 		"configuration": {
@@ -41,13 +43,7 @@
 					"description": "Traces the communication between VS Code and the language server."
 				}
 			}
-		},
-		"commands": [
-			{
-				"command": "bhc.testing123",
-				"title": "testing1234"
-			}
-		]
+		}
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
