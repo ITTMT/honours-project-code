@@ -17,7 +17,7 @@
 				"script": "watch"
 			},
 			"env": {
-				"SERVER_PATH": "${workspaceRoot}/server/target/debug/bhc-language-server"
+				"SERVER_PATH": "${workspaceRoot}/target/debug/bhc-language-server"
 			}
 		},
 		{
@@ -35,15 +35,15 @@
 		{
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'server'",
+            "name": "Debug executable 'bhc-language-server'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=server",
-                    "--package=server"
+                    "--bin=bhc-language-server",
+                    "--package=bhc-language-server"
                 ],
                 "filter": {
-                    "name": "server",
+                    "name": "bhc-language-server",
                     "kind": "bin"
                 }
             },
@@ -53,16 +53,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'server'",
+            "name": "Debug unit tests in executable 'bhc-language-server'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=server",
-                    "--package=server"
+                    "--bin=bhc-language-server",
+                    "--package=bhc-language-server"
                 ],
                 "filter": {
-                    "name": "server",
+                    "name": "bhc-language-server",
                     "kind": "bin"
                 }
             },
