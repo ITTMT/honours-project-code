@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import {
+	Executable,
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
@@ -10,56 +11,49 @@ import {
 let client: LanguageClient;
 
 export function activate(context: vscode.ExtensionContext) {
-	const serverModule = context.asAbsolutePath(path.join('server', 'target', 'release', 'server.exe'));
+	const disposable = vscode.commands.registerCommand("helloworld.helloWorld", async uri => {
+		// The code you place here will be executed every time your command is executed
+		// Display a message box to the user
+		const url = vscode.Uri.parse('/home/victor/Documents/test-dir/nrs/another.nrs');
+		const document = await vscode.workspace.openTextDocument(uri);
+		await vscode.window.showTextDocument(document);
+		
+		// console.log(uri)
+		vscode.window.activeTextEditor.document;
+		const editor = vscode.window.activeTextEditor;
+		const range = new vscode.Range(1, 1, 1, 1);
+		editor.selection = new vscode.Selection(range.start, range.end);
+	});
+
+	const traceOutputChannel = vscode.window.createOutputChannel("LSP Trace");
+	const command = process.env.SERVER_PATH || "server";
+
+	const run: Executable = {
+		command,
+		options: {
+			env: {
+				...process.env,
+				RUST_LOG:"debug",
+			},
+		},
+	};
 
 	const serverOptions: ServerOptions = {
-		run: { module: serverModule, transport: TransportKind.ipc },
-		debug: {
-			module: serverModule,
-			transport: TransportKind.ipc,
-		}
+		run,
+		debug: run,
 	};
+
 	const clientOptions: LanguageClientOptions = {
-		documentSelector: [{ scheme: 'file', language: 'html' }],
+		documentSelector: [{ scheme: "file", language: "html"}], 
 		synchronize: {
-			fileEvents: vscode.workspace.createFileSystemWatcher('**/.clientrc')
-		}
+			fileEvents: vscode.workspace.createFileSystemWatcher("**/.clientrc"),
+		},
+		traceOutputChannel,
 	};
 
-	client = new LanguageClient(
-		'languageServerExample',
-		'Language Server Example',
-		serverOptions,
-		clientOptions
-	);
-
+	client = new LanguageClient("bhc-language-server", "bhc language server", serverOptions, clientOptions);
 	client.start();
 }
-
-
-// export function activate(context : vscode.ExtensionContext) {
-// 	console.log('starting');
-	
-// 	const myScheme = 'bhc';
-// 	const myProvider = new class implements vscode.TextDocumentContentProvider {
-// 		onDidChangeEmitter = new vscode.EventEmitter<vscode.Uri>();
-// 		onDidChange = this.onDidChangeEmitter.event;
-
-// 		provideTextDocumentContent(uri: vscode.Uri): string {
-// 			return uri.path;
-// 		}
-// 	};
-
-// 	context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider(myScheme, myProvider));
-
-// 	const testa: vscode.Uri = vscode.Uri.file("C:\\Users\\Ollie\\Documents\\CS\\honours-project-code\\css_files\\base.css");
-
-// 	context.subscriptions.push(vscode.commands.registerCommand('bhc.testing123', async () => {
-// 		await vscode.workspace.openTextDocument(testa).then (y => {
-// 			vscode.window.showTextDocument(y, {preview: false});
-// 		});
-// 	}));
-// }
 
 export function deactivate(): Thenable<void> | undefined {
 	if (!client) {
@@ -67,3 +61,33 @@ export function deactivate(): Thenable<void> | undefined {
 	}
 	return client.stop();
 }
+
+export function activateInlayHints(ctx: vscode.ExtensionContext) {
+	const maybeUpdater = {
+		hintsProvider: null as Disposable | null,
+		updateHintsEventEmitter: new vscode.EventEmitter<void>(),
+  
+		async onConfigChange() {
+			this.dispose();
+  
+			const event = this.updateHintsEventEmitter.event;
+		},
+  
+
+		onDidChangeTextDocument({ contentChanges, document }: vscode.TextDocumentChangeEvent) {
+		// debugger
+		// this.updateHintsEventEmitter.fire();
+		},
+  
+		dispose() {
+			this.hintsProvider?.dispose();
+			this.hintsProvider = null;
+			this.updateHintsEventEmitter.dispose();
+		},
+	};
+  
+	vscode.workspace.onDidChangeConfiguration(maybeUpdater.onConfigChange, maybeUpdater, ctx.subscriptions);
+	vscode.workspace.onDidChangeTextDocument(maybeUpdater.onDidChangeTextDocument, maybeUpdater, ctx.subscriptions);
+  
+	maybeUpdater.onConfigChange().catch(console.error);
+  }
