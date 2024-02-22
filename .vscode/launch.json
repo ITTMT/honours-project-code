@@ -69,5 +69,11 @@
             "args": [],
             "cwd": "${workspaceFolder}"
         }
+        {
+            "type": "lldb",
+            "request": "attach",
+            "name": "Attach Debugger to running process",
+            "program": "${workspaceRoot}/target/debug/bhc-language-server"
+        }
 	]
 }
