@@ -1,39 +1,31 @@
-mod css;
 mod file;
-mod html;
+mod bhc_commands;
+mod logging;
+mod memory;
 
-use std::fmt::Display;
-use std::path::Path;
+use std::path::PathBuf;
+use std::sync::{Mutex, MutexGuard};
 
-use css::css_commands;
-use html::html_commands;
+use file::Files;
+use logging::Logging;
+use memory::Memory;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
+
+// This will last the entire lifetime of the server.
+// Reduces the need to call for workspace changes every time, as it only needs to be known at the start
+// and when it gets changed.
+static MEMORY: Mutex<Memory> = Mutex::new(Memory { workspace_folders: Vec::new(), });
+
+fn access_memory() -> MutexGuard<'static, Memory> {
+    MEMORY.lock().unwrap()
+}
+
 #[derive(Debug)]
 pub struct Backend{
     client: Client,
-}
-
-trait Logging {
-    async fn log_info<M: Display>(&self, message:M);
-
-    async fn log_error<M: Display>(&self, message:M);
-} 
-
-impl Logging for Backend {
-    async fn log_info<M: Display>(&self, message: M) {
-        self.client
-        .log_message(MessageType::INFO, message)
-        .await;
-    }
-
-    async fn log_error<M:Display>(&self, message: M) {
-        self.client
-        .log_message(MessageType::ERROR, message)
-        .await;
-    }
 }
 
 #[tower_lsp::async_trait]
@@ -90,6 +82,19 @@ impl LanguageServer for Backend {
 
     async fn initialized(&self, _: InitializedParams) {
         self.log_info("BHC language server initialized!").await;
+
+        let workspace_paths = match self.client.workspace_folders().await {
+            Ok(value) => value,
+            Err(error) => {
+                self.log_error(format!("Error occurred trying to get workspace folders: {}", error)).await;
+                None
+            }
+        };
+
+        let x = self.get_workspace_paths(workspace_paths).await;
+
+        let mut memory = access_memory();
+        memory.add_workspaces(x);
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -99,27 +104,28 @@ impl LanguageServer for Backend {
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         self.log_info(format!("File Opened: {}", params.text_document.uri)).await;
 
-        let value = css_commands::produce_css_file(html_commands::get_css_files(&params.text_document.text));
-
-        let x = ShowDocumentParams{
-            uri: Url::from_file_path(Path::new(&value)).expect(""),
-            external: None, 
-            take_focus: Some(false), 
-            selection: None
+        let folder = match access_memory().get_only_folder(){
+            Some(value) => value,
+            None => PathBuf::new()
         };
+
+        let save_folder = self.create_dotfolder(&folder).expect("");
+        let file_name = self.get_only_filename(&params.text_document.uri.to_string()).expect("");
+        let absolute_css_paths = self.get_css_files(&params.text_document.uri.to_string(), &params.text_document.text);
+
+        let value = self.produce_css_file(&file_name, &save_folder, absolute_css_paths).await.unwrap();
+
+        let abc = value.into_os_string().into_string().unwrap();
+        let y = bhc_commands::BhcShowDocumentParams {
+            uri: Url::parse(&abc).unwrap(),
+        };
+
+        match self.client.send_request::<bhc_commands::BhcShowDocumentRequest>(y).await {
+            Ok(_) => (),
+            Err(error) => self.log_error(format!("Error occurred trying to open CSS file: {}", error)).await
+        };
+
         
-        match self.client.show_document(x)
-        .await{
-            Ok(value) => if value == false {
-                self.log_error("Unable to open CSS file").await
-            },
-            Err(error) => 
-                self.log_error(format!("Error occurred trying to open CSS file: {}", error)).await,
-        };
-
-        let x = file::get_workspace_paths(self).await;
-
-        self.log_info(format!("{:?}", x)).await;
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
