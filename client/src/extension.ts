@@ -16,11 +16,6 @@ export function activate(context: vscode.ExtensionContext) {
 	const traceOutputChannel = vscode.window.createOutputChannel("BHC LSP Trace");
 	const command = process.env.SERVER_PATH || "bhc-language-server";
 
-	context.subscriptions.push(
-		vscode.commands.registerCommand('bhc.activate', async () => {
-		})
-	);
-
 	const run: Executable = {
 		command,
 		options: {

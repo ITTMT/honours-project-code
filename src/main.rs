@@ -93,8 +93,7 @@ impl LanguageServer for Backend {
 
         let x = self.get_workspace_paths(workspace_paths).await;
 
-        let mut memory = access_memory();
-        memory.add_workspaces(x);
+        access_memory().add_workspaces(x);
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -108,6 +107,13 @@ impl LanguageServer for Backend {
             Some(value) => value,
             None => PathBuf::new()
         };
+
+
+
+// TODO: Need to change this to pass in the html PathBuf
+// Create dotfolder is pointless, it can just create the entire path, the 
+// file structure of the .bhc folder should be mirror of the actual file structure.
+// 
 
         let save_folder = self.create_dotfolder(&folder).expect("");
         let file_name = self.get_only_filename(&params.text_document.uri.to_string()).expect("");
@@ -124,7 +130,6 @@ impl LanguageServer for Backend {
             Ok(_) => (),
             Err(error) => self.log_error(format!("Error occurred trying to open CSS file: {}", error)).await
         };
-
         
     }
 

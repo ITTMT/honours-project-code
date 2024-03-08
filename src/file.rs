@@ -24,19 +24,24 @@ impl Files for Backend {
 	async fn get_workspace_paths(&self, folders: Option<Vec<WorkspaceFolder>>) -> Vec<PathBuf> {
 
 		let mut workspace_paths: Vec<PathBuf> = Vec::new();
-	
+		let mut error_occured = false;
+			
 		match folders{
 			Some(value) => {
 				value
 				.iter()
 				.for_each(|path| match path.uri.to_file_path(){
 					Ok(result) => workspace_paths.push(result),
-					Err(()) => {
-						self.log_error("Error transforming uri to file path.");
+					Err(_) => {
+						error_occured = true;
 					}
 				});
 			},
 			None => workspace_paths.push(env::temp_dir())
+		}
+
+		if error_occured {
+			self.log_error("Error transforming uri to file path.").await;
 		}
 	
 		return workspace_paths;
@@ -186,10 +191,12 @@ impl Files for Backend {
 	
 		let tmp_path = Temp::new_file().expect("");
 	
+		self.log_info(format!("{:?}", &new_file_path)).await;
+
 		// Open temp file for writing
-		let mut tmp = File::create(&tmp_path).expect("");
+		let mut tmp = File::create(&tmp_path).unwrap();
 		// Open source file for reading
-		let mut src = File::open(&new_file_path).expect("");
+		let mut src = File::open(&new_file_path).unwrap();
 		// Write the data to prepend
 		tmp.write_all(concatenated_css.as_bytes()).expect("");
 		// Copy the rest of the source file
