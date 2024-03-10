@@ -1,30 +1,29 @@
-mod file;
 mod bhc_commands;
+mod file;
 mod logging;
 mod memory;
+mod metadata;
 
-use std::path::PathBuf;
-use std::sync::{Mutex, MutexGuard};
+use std::env;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
-use file::Files;
+use bhc_commands::BhcShowDocumentParams;
 use logging::Logging;
 use memory::Memory;
+use once_cell::sync::Lazy;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
+static MEMORY: Lazy<Arc<Mutex<Memory>>> = Lazy::new(|| {
+    let memory = Memory::new();
+    Arc::new(Mutex::new(memory))
+});
+/* #region Language Server - tower_lsp */
 
-// This will last the entire lifetime of the server.
-// Reduces the need to call for workspace changes every time, as it only needs to be known at the start
-// and when it gets changed.
-static MEMORY: Mutex<Memory> = Mutex::new(Memory { workspace_folders: Vec::new(), });
-
-fn access_memory() -> MutexGuard<'static, Memory> {
-    MEMORY.lock().unwrap()
-}
-
-#[derive(Debug)]
-pub struct Backend{
+#[derive(Debug, Clone)]
+pub struct Backend {
     client: Client,
 }
 
@@ -32,9 +31,9 @@ pub struct Backend{
 impl LanguageServer for Backend {
     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult {
-            server_info: None,
+            server_info:     None,
             offset_encoding: None,
-            capabilities: ServerCapabilities {
+            capabilities:    ServerCapabilities {
                 call_hierarchy_provider: None,
                 code_action_provider: None,
                 code_lens_provider: None,
@@ -64,16 +63,14 @@ impl LanguageServer for Backend {
                 selection_range_provider: None,
                 semantic_tokens_provider: None,
                 signature_help_provider: None,
-                text_document_sync: Some(TextDocumentSyncCapability::Kind(
-                    TextDocumentSyncKind::FULL,
-                )),
+                text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
                 type_definition_provider: None,
                 workspace: Some(WorkspaceServerCapabilities {
                     workspace_folders: Some(WorkspaceFoldersServerCapabilities {
-                        supported: Some(true),
+                        supported:            Some(true),
                         change_notifications: Some(OneOf::Left(true)),
                     }),
-                    file_operations: None,
+                    file_operations:   None,
                 }),
                 workspace_symbol_provider: None,
             },
@@ -82,18 +79,6 @@ impl LanguageServer for Backend {
 
     async fn initialized(&self, _: InitializedParams) {
         self.log_info("BHC language server initialized!").await;
-
-        let workspace_paths = match self.client.workspace_folders().await {
-            Ok(value) => value,
-            Err(error) => {
-                self.log_error(format!("Error occurred trying to get workspace folders: {}", error)).await;
-                None
-            }
-        };
-
-        let x = self.get_workspace_paths(workspace_paths).await;
-
-        access_memory().add_workspaces(x);
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -103,46 +88,96 @@ impl LanguageServer for Backend {
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         self.log_info(format!("File Opened: {}", params.text_document.uri)).await;
 
-        let folder = match access_memory().get_only_folder(){
-            Some(value) => value,
-            None => PathBuf::new()
+        self.first_time_setup_check().await;
+
+        let mut error_string: String = "".to_string();
+        let mut error_occurred = false;
+        let mut css_file_path: PathBuf = Path::new("").to_path_buf();
+
+        let memory = Arc::clone(&MEMORY);
+
+        match self.produce_css_file(params, &memory.lock().unwrap()) {
+            Ok(value) => css_file_path = value,
+            Err(error) => {
+                error_occurred = true;
+                error_string = error;
+            }
         };
 
+        if error_occurred {
+            self.log_error(error_string).await;
+            return;
+        }
 
+        let css_file_url = Url::parse(css_file_path.to_str().unwrap()).unwrap();
 
-// TODO: Need to change this to pass in the html PathBuf
-// Create dotfolder is pointless, it can just create the entire path, the 
-// file structure of the .bhc folder should be mirror of the actual file structure.
-// 
+        let params = BhcShowDocumentParams { uri: css_file_url };
 
-        let save_folder = self.create_dotfolder(&folder).expect("");
-        let file_name = self.get_only_filename(&params.text_document.uri.to_string()).expect("");
-        let absolute_css_paths = self.get_css_files(&params.text_document.uri.to_string(), &params.text_document.text);
-
-        let value = self.produce_css_file(&file_name, &save_folder, absolute_css_paths).await.unwrap();
-
-        let abc = value.into_os_string().into_string().unwrap();
-        let y = bhc_commands::BhcShowDocumentParams {
-            uri: Url::parse(&abc).unwrap(),
-        };
-
-        match self.client.send_request::<bhc_commands::BhcShowDocumentRequest>(y).await {
+        match self.client.send_request::<bhc_commands::BhcShowDocumentRequest>(params).await {
             Ok(_) => (),
-            Err(error) => self.log_error(format!("Error occurred trying to open CSS file: {}", error)).await
+            Err(error) => self.log_error(format!("Error occurred trying to open CSS file: {}", error)).await,
         };
-        
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
         self.log_info(format!("File Closed: {}", params.text_document.uri)).await;
     }
 
-    async fn did_change_workspace_folders(&self, _: DidChangeWorkspaceFoldersParams) {
+    async fn did_change_workspace_folders(&self, params: DidChangeWorkspaceFoldersParams) {
         self.log_info("Workspace Folder Changed.").await;
+
+        let memory = Arc::clone(&MEMORY);
+
+        let added_workspaces = match self.get_workspace_paths(params.event.added) {
+            Ok(value) => value,
+            Err(error) => {
+                self.log_error(error).await;
+                return;
+            }
+        };
+
+        let removed_workspaces = match self.get_workspace_paths(params.event.removed) {
+            Ok(value) => value,
+            Err(error) => {
+                self.log_error(error).await;
+                return;
+            }
+        };
+
+        memory.lock().unwrap().add_workspaces(added_workspaces);
+        memory.lock().unwrap().remove_workspaces(removed_workspaces);
     }
 
     async fn did_change_watched_files(&self, _: DidChangeWatchedFilesParams) {
         self.log_info("watched files have changed!").await;
+    }
+}
+/* #endregion */
+
+impl Backend {
+    pub async fn first_time_setup_check(&self) {
+        let memory = Arc::clone(&MEMORY);
+
+        if !memory.lock().unwrap().is_ready() {
+            let workspace_paths = match self.client.workspace_folders().await {
+                Ok(value) => match value {
+                    Some(value) => value,
+                    None => {
+                        memory.lock().unwrap().add_workspace(env::temp_dir());
+                        return;
+                    }
+                },
+                Err(error) => {
+                    self.log_error(format!("Error occurred trying to get workspace folders: {}", error)).await;
+                    return;
+                }
+            };
+
+            match self.get_workspace_paths(workspace_paths) {
+                Ok(value) => memory.lock().unwrap().add_workspaces(value),
+                Err(error) => self.log_error(error).await,
+            };
+        }
     }
 }
 

@@ -27,6 +27,12 @@
 				]
 			}
 		],
+		"commands": [
+			{
+				"command": "bhc.activate",
+				"title": "Activate BHC"
+			}
+		],
 		"configuration": {
 			"type": "object",
 			"title": "bhc-language-server",

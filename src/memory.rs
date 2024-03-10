@@ -1,80 +1,72 @@
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
-#[derive(Debug)]
+use crate::{logging::Logging, Backend};
+
 pub struct Memory {
-    pub workspace_folders: Vec<PathBuf>,
+    workspace_paths: Vec<PathBuf>,
+    ready:           bool,
 }
 
 impl Memory {
+    pub fn new() -> Memory {
+        Memory {
+            workspace_paths: Vec::new(),
+            ready:           false,
+        }
+    }
 
-	pub fn add_workspaces(&mut self, mut workspaces: Vec<PathBuf>) {
-		self.workspace_folders.append(&mut workspaces);
-	}
+    pub fn is_ready(&self) -> bool {
+        self.ready
+    }
 
-	pub fn get_workspace_folder(self, i: &PathBuf) -> Option<PathBuf> {
-		if self.workspace_folders.contains(i) {
-			let x: Vec<PathBuf> = self.workspace_folders
-			.iter()
-			.filter(|&x| x == i)
-			.cloned()
-			.collect();
+    pub fn add_workspace(&mut self, workspace: PathBuf) {
+        self.workspace_paths.push(workspace);
+        self.ready = true;
+    }
 
-			match x.first() {
-				Some(value) => Some(value),
-				None => None
-			};
-		}
+    pub fn add_workspaces(&mut self, mut workspaces: Vec<PathBuf>) {
+        self.workspace_paths.append(&mut workspaces);
+        self.ready = true;
+    }
 
-		None
-	}
+    pub fn remove_workspaces(&mut self, workspaces: Vec<PathBuf>) {
+        self.workspace_paths.retain(|x| !workspaces.contains(x))
+    }
 
-	pub fn workspace_folder_length(&self) -> u32 {
-		self.workspace_folders.len() as u32
-	}
+    
 
-	pub fn get_only_folder(&self) -> Option<PathBuf> {
-		match self.workspace_folders.len() == 1 {
-			true => Some(self.workspace_folders[0].clone()),
-			false => None,
-		}
-	}
+    pub fn get_workspace_folder(&self, file_path: &PathBuf) -> Option<PathBuf> {
+        let x: Vec<PathBuf> = self.workspace_paths.clone().into_iter().filter(|x| file_path.starts_with(x)).collect();
+
+        match x.first() {
+            Some(value) => Some(value.clone()),
+            None => None,
+        }
+    }
+
+    pub async fn first_time_setup(&mut self, backend: &Backend) {
+        let workspace_paths = match backend.client.workspace_folders().await {
+            Ok(value) => match value {
+                Some(value) => value,
+                None => {
+                    self.add_workspace(env::temp_dir());
+                    return;
+                }
+            },
+            Err(error) => {
+                backend.log_error(format!("Error occurred trying to get workspace folders: {}", error)).await;
+                return;
+            }
+        };
+
+        match backend.get_workspace_paths(workspace_paths) {
+            Ok(value) => self.add_workspaces(value),
+            Err(error) => backend.log_error(error).await,
+        };
+    }
 }
 
+/* #region Unit Tests */
 #[cfg(test)]
-mod tests {
-    use std::path::{self, PathBuf};
-
-    use super::Memory;
-
-	#[test]
-	fn test_get_only_folder() {
-		let mut folder: Memory = Memory{ workspace_folders: Vec::new()};
-
-		let path: PathBuf = [r"C:\", "windows", "system32.dll"].iter().collect();
-		folder.workspace_folders.push(path.clone());
-
-		assert_eq!(folder.get_only_folder().unwrap(), path);
-	}
-
-	#[test]
-	fn test_get_only_folder_empty() {
-		let memory = Memory{ workspace_folders: Vec::new()};
-
-		assert!(memory.get_only_folder() == None);
-	}
-
-	#[test]
-	fn test_get_only_folder_multiple() {
-		let mut memory = Memory{ workspace_folders: Vec::new()};
-
-		let path1: PathBuf = [r"C:\", "windows", "system32"].iter().collect();
-		let path2: PathBuf = [r"C:\", "windows", "system32.dll"].iter().collect();
-
-		memory.workspace_folders.push(path1);
-		memory.workspace_folders.push(path2);
-
-		assert!(memory.get_only_folder() == None);
-	}
-
-
-}
+mod tests {}
+/* #endregion */

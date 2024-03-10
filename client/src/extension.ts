@@ -51,6 +51,10 @@ export function activate(context: vscode.ExtensionContext) {
 			})
 		});
 	});
+
+	vscode.commands.registerCommand('bhc.activate', () => {
+		client.start();
+	})
 }
 
 export function deactivate(): Thenable<void> | undefined {
