@@ -15,7 +15,8 @@
 		"vscode": "^1.66.0"
 	},
 	"activationEvents": [
-		"onLanguage:html"
+		"onLanguage:html",
+		"onLanguage:css"
 	],
 	"main": "./client/out/extension.js",
 	"contributes": {
@@ -24,6 +25,12 @@
 				"id": "html",
 				"extensions": [
 					".html"
+				]
+			},
+			{
+				"id": "css",
+				"extensions": [
+					".css"
 				]
 			}
 		],

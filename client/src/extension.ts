@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import {
 	Executable,
 	LanguageClient,
@@ -16,6 +15,8 @@ export function activate(context: vscode.ExtensionContext) {
 	const traceOutputChannel = vscode.window.createOutputChannel("BHC LSP Trace");
 	const command = process.env.SERVER_PATH || "bhc-language-server";
 
+	vscode.commands.registerCommand('bhc.activate', () => {})
+
 	const run: Executable = {
 		command,
 		options: {
@@ -31,8 +32,14 @@ export function activate(context: vscode.ExtensionContext) {
 		debug: run,
 	};
 
+	// use this for later [https://github.com/microsoft/vscode-extension-samples/tree/main/decorator-sample]
+	// This will be helpful in colouring the lines for each file.
+
 	const clientOptions: LanguageClientOptions = {
-		documentSelector: [{scheme: "file", language: "html"}],
+		documentSelector: [
+			{scheme: "file", language: "html"},
+			{scheme: "file", language: "css"}
+		],
 		synchronize: {
 			fileEvents: vscode.workspace.createFileSystemWatcher("**/.clientrc"),
 		},
@@ -52,9 +59,6 @@ export function activate(context: vscode.ExtensionContext) {
 		});
 	});
 
-	vscode.commands.registerCommand('bhc.activate', () => {
-		client.start();
-	})
 }
 
 export function deactivate(): Thenable<void> | undefined {
@@ -65,7 +69,7 @@ export function deactivate(): Thenable<void> | undefined {
 }
 
 type BhcShowDocumentParams = {
-	uri: string
+	uri: vscode.Uri
 }
 ``
 
@@ -74,23 +78,15 @@ function xyz(event) {
 	let x = vscode.window.tabGroups.all.flatMap(({ tabs }) => tabs.map(tab => tab.group))
 
 	console.log(x);
-
-	console.log(event);
 }
 
-// function abc(event) {
-
-// 	console.log(event);
-// }
-
-// vscode.window.onDidChangeActiveTextEditor(abc);
-
 vscode.workspace.onDidOpenTextDocument(xyz);
-// vscode.workspace.onDidCloseTextDocument(xyz);
-
 
 // rule 1, if we open a file, we open its corresponding css file in column 2
 // rule 2, if we open another file, we open its corresponding css file in column 2 as well
 // rule 3, if we change focus of the html file to another one, we change focus of the css file to the corresponding file.
 // rule 4, rule 3 vice versa.
 // rule 5, if we try to open a file inside column 2, we open it inside column 1. Make sure that none of the active files have been closed.
+
+// there's a weird event happening that an automatically opened file isn't signalling when it is closed 100% of the time.
+// need to link the html file to the virtual css file so it opens and closes with eachother

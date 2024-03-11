@@ -4,14 +4,14 @@ use crate::{logging::Logging, Backend};
 
 pub struct Memory {
     workspace_paths: Vec<PathBuf>,
-    ready:           bool,
+    ready: bool,
 }
 
 impl Memory {
     pub fn new() -> Memory {
         Memory {
             workspace_paths: Vec::new(),
-            ready:           false,
+            ready: false,
         }
     }
 
@@ -32,8 +32,6 @@ impl Memory {
     pub fn remove_workspaces(&mut self, workspaces: Vec<PathBuf>) {
         self.workspace_paths.retain(|x| !workspaces.contains(x))
     }
-
-    
 
     pub fn get_workspace_folder(&self, file_path: &PathBuf) -> Option<PathBuf> {
         let x: Vec<PathBuf> = self.workspace_paths.clone().into_iter().filter(|x| file_path.starts_with(x)).collect();
@@ -63,6 +61,10 @@ impl Memory {
             Ok(value) => self.add_workspaces(value),
             Err(error) => backend.log_error(error).await,
         };
+    }
+
+    pub fn get_all_workspaces(&self) -> Vec<PathBuf> {
+        self.workspace_paths.clone()
     }
 }
 
