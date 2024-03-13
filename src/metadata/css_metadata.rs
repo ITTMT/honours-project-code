@@ -1,7 +1,14 @@
-use chrono::{serde::ts_seconds, DateTime, Utc};
+use std::{fs, path::PathBuf};
+
+use chrono::{DateTime, serde::ts_seconds, Utc};
+use cssparser::{BasicParseError, ParseError, Parser, ParserInput, Token};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+use crate::file::create_dir_and_file;
+
+use super::Metadata;
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct CssMetaData {
     pub file_name: String,
     pub absolute_path: String,
@@ -12,20 +19,20 @@ pub struct CssMetaData {
     pub styles: Vec<Style>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct CssFile {
     pub id: u32,
     pub file_name: String,
     pub absolute_path: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Style {
     pub tag: String,
     pub attributes: Vec<Attribute>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Attribute {
     pub name: String,
     pub value: String,
@@ -37,7 +44,17 @@ pub struct Attribute {
 }
 
 impl CssMetaData {
-    fn new<S: Into<String>>(
+    fn new() -> CssMetaData {
+        CssMetaData {
+            file_name: String::new(),
+            absolute_path: String::new(),
+            last_updated: Utc::now(),
+            imported_sheets: Vec::new(),
+            styles: Vec::new(),
+        }
+    }
+
+    fn new_<S: Into<String>>(
         file_name: S, absolute_path: S, last_updated: i64, styles: Vec<Style>, imported_sheets: Vec<CssFile>,
     ) -> CssMetaData {
         CssMetaData {
@@ -61,7 +78,14 @@ impl CssFile {
 }
 
 impl Style {
-    fn new<S: Into<String>>(tag: S, attributes: Vec<Attribute>) -> Style {
+    fn new() -> Style {
+        Style{
+            tag: String::new(),
+            attributes: Vec::new()
+        }
+    }
+
+    fn new_<S: Into<String>>(tag: S, attributes: Vec<Attribute>) -> Style {
         Style {
             tag: tag.into(),
             attributes: attributes,
@@ -70,7 +94,15 @@ impl Style {
 }
 
 impl Attribute {
-    fn new<S: Into<String>>(name: S, value: S, source: Option<u32>, is_overwritten: Option<bool>) -> Attribute {
+    fn new() -> Attribute {
+        Attribute {
+            name: String::new(),
+            value: String::new(),
+            source: None,
+            is_overwritten: None,
+        }
+    }
+    fn new_<S: Into<String>>(name: S, value: S, source: Option<u32>, is_overwritten: Option<bool>) -> Attribute {
         Attribute {
             name: name.into(),
             value: value.into(),
@@ -80,12 +112,142 @@ impl Attribute {
     }
 }
 
+impl Metadata<CssMetaData> for CssMetaData {
+    fn create_metadata(metadata_path: &PathBuf, file_path: &PathBuf) -> Result<CssMetaData, String> {
+
+        match create_dir_and_file(&metadata_path) {
+            Ok(_) => (),
+            Err(error) => return Err(error)
+        };
+
+        let css_string = match fs::read_to_string(&file_path) {
+            Ok(value) => value,
+            Err(error) => return Err(format!("Error trying to read css file: ({:?}) {:?}", &file_path, error))
+        };
+
+        let last_updated = fs::metadata(&file_path).unwrap();
+
+        let mut metadata = CssMetaData::new();
+
+        metadata.file_name = file_path.file_name().unwrap().to_str().unwrap().to_string();
+        metadata.absolute_path = file_path.to_str().unwrap().to_string();
+        metadata.last_updated = last_updated.modified().unwrap().into();
+
+        let mut parser_input = ParserInput::new(&css_string);
+        let mut parser = Parser::new(&mut parser_input);
+
+
+        Ok(metadata)
+    }
+}
+
+pub fn parse_sheet<'a>(parser: &mut Parser) -> Result<Vec<Style>, ParseError<'a, String>> {
+    let mut styles: Vec<Style> = Vec::new();
+    let mut style = Style::new();
+
+    while !parser.is_exhausted() {
+        match parser.next() {
+            Ok(token) => match token {
+                Token::Ident(value) => {
+                    style = Style::new();
+                    style.tag = value.to_string()
+                },
+                Token::CurlyBracketBlock => {
+                    let attributes = parser.parse_nested_block(|inner_parser| {
+                        parse_attributes(inner_parser)
+                    }).unwrap();
+
+                    style.attributes = attributes;
+
+                    styles.push(style.clone());
+                },
+                _ => (),
+            },
+
+            Err(_) => ()
+        }
+    }
+
+    Ok(styles)
+}
+
+fn parse_attributes<'a>(parser: &mut Parser) -> Result<Vec<Attribute>, ParseError<'a, String>> {
+    let mut attributes: Vec<Attribute> = Vec::new();
+    let mut attribute = Attribute::new();
+
+    while !parser.is_exhausted() {
+        match parser.next() {
+            Ok(token) => match token {
+                Token::Ident(value) => {
+                    attribute.name = value.to_string();
+                },
+                Token::Colon => {
+                    let attribute_value = parse_attribute_value(parser).unwrap();
+
+                    attribute.value = attribute_value;
+
+                    attributes.push(attribute.clone());
+                }
+                _ => (),
+            },
+
+            Err(_) => ()
+        }
+    }
+
+
+    Ok(attributes)
+}
+
+fn parse_attribute_value<'a>(parser: &mut Parser) -> Result<String, ParseError<'a, String>> {
+    let mut attribute_value = String::new();
+
+    while !parser.is_exhausted() {
+        match parser.next() {
+            Ok(token) => match token {
+                Token::Ident(value) => {
+                    attribute_value = value.to_string();
+                },
+                Token::Dimension { has_sign, value, int_value, unit } => {
+                    attribute_value.push_str(&value.to_string());
+                    attribute_value.push_str(&unit);
+                }
+                Token::Semicolon => {
+                    break
+                }
+                _ => (),
+            },
+
+            Err(_) => ()
+        }
+    }
+    Ok(attribute_value)
+}
+
+// string = match parser.next() {
+// Ok(token) => match token {
+// Token::Ident(value) => value.to_string(),
+// Token::Dimension { has_sign, value, int_value, unit } => {
+// let mut string = String::new();
+// string.push_str(&value.to_string());
+// string.push_str(&unit);
+//
+// string
+// },
+// _ => String::new(),
+// },
+//
+// Err(_) => String::new(),
+// };
+
 /* #region Unit Tests */
 #[cfg(test)]
 mod tests {
     use std::{fs, time::UNIX_EPOCH};
+    use cssparser::{Parser, ParserInput};
 
-    use super::{Attribute, CssFile, CssMetaData, Style};
+
+    use super::{Attribute, CssFile, CssMetaData, parse_sheet, Style};
 
     #[test]
     fn test() {
@@ -107,15 +269,15 @@ mod tests {
 
     #[test]
     fn test2() {
-        let attribute1 = Attribute::new("background-color", "red", None, None);
-        let attribute2 = Attribute::new("background-color", "green", Some(2), Some(false));
-        let attribute3 = Attribute::new("font-size", "11pt", Some(2), Some(true));
+        let attribute1 = Attribute::new_("background-color", "red", None, None);
+        let attribute2 = Attribute::new_("background-color", "green", Some(2), Some(false));
+        let attribute3 = Attribute::new_("font-size", "11pt", Some(2), Some(true));
 
         let attributes1: Vec<Attribute> = vec![attribute1];
         let attributes2: Vec<Attribute> = vec![attribute2, attribute3];
 
-        let style1 = Style::new("h1", attributes1);
-        let style2 = Style::new("p", attributes2);
+        let style1 = Style::new_("h1", attributes1);
+        let style2 = Style::new_("p", attributes2);
 
         let styles: Vec<Style> = vec![style1, style2];
 
@@ -123,7 +285,7 @@ mod tests {
 
         let files = vec![file1];
 
-        let metadata = CssMetaData::new("test.css", "D:/programming/web-dev/xd/css/test.css", 1710090300, styles, files);
+        let metadata = CssMetaData::new_("test.css", "D:/programming/web-dev/xd/css/test.css", 1710090300, styles, files);
 
         let serialized = serde_json::to_string(&metadata).unwrap();
 
@@ -134,6 +296,30 @@ mod tests {
         println!("deserialized = {:?}", deserialized);
 
         assert_eq!(deserialized, metadata);
+    }
+
+    #[test]
+    fn test3() {
+        let css_string = r#"
+h1 {
+    background-color: red;
+    background-color: green;
+    font-size: 100pt;
+    xd: 100px;
+}
+
+p {
+    font-size: 14pt;
+}"#;
+
+        let mut parserinput = ParserInput::new(&css_string);
+        let mut parser = Parser::new(&mut parserinput);
+
+        let mut metadata = CssMetaData::new();
+
+        metadata.styles = parse_sheet(&mut parser).unwrap();
+
+        println!("{metadata:?}");
     }
 }
 /* #endregion */

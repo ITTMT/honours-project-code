@@ -153,25 +153,35 @@ impl Backend {
     }
 
     fn save_css_file(&self, css_string: &str, save_path: &PathBuf) -> Result<PathBuf, String> {
-        let directory = save_path.parent().unwrap().to_path_buf();
 
-        match fs::create_dir_all(directory) {
+        match create_dir_and_file(&save_path) {
             Ok(_) => (),
-            Err(error) => return Err(format!("Error occurred trying to create the save directory: {:?}", error)),
+            Err(error) => return Err(error)
         };
-
-        match File::create(save_path) {
-            Ok(_) => (),
-            Err(error) => return Err(format!("Error occurred trying to create the file: {:?}, {:?}", save_path, error).to_string()),
-        }
 
         match fs::write(save_path, css_string) {
             Ok(_) => (),
-            Err(error) => return Err(format!("Error occurred trying to write to the file {:?}, {:?}", save_path, error).to_string()),
+            Err(error) => return Err(format!("Error occurred trying to write to the file ({:?}), {:?}", save_path, error).to_string()),
         };
 
         Ok(save_path.clone())
     }
+}
+
+pub fn create_dir_and_file(file_path: &PathBuf) -> Result<(), String> {
+    let directory = file_path.parent().unwrap().to_path_buf();
+
+    match fs::create_dir_all(directory) {
+        Ok(_) => (),
+        Err(error) => return Err(format!("Error occurred trying to create the save directory: {:?}", error)),
+    };
+
+    match File::create(file_path) {
+        Ok(_) => (),
+        Err(error) => return Err(format!("Error occurred trying to create the file: ({:?}), {:?}", file_path, error).to_string()),
+    }
+
+    Ok(())
 }
 
 fn file_to_pathbuf(document: &TextDocumentItem) -> PathBuf {

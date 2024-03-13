@@ -15,6 +15,7 @@ use error::Error;
 use logging::Logging;
 use metadata::workspace_metadata::{create_workspace_metadata, open_workspace_metadata, WorkspaceMetaData};
 use memory::Memory;
+use metadata::GroupedFiles;
 use once_cell::sync::Lazy;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
@@ -204,12 +205,14 @@ impl Backend {
                 let mut found_paths: Vec<PathBuf> = Vec::new();
                 recursive_file_search(&path, &mut found_paths);
 
+                let grouped_files: GroupedFiles = found_paths.clone().into();
+
                 // need to first of all check if the workspace is a web project, otherwise I don't need to do anything for it.
 
                 let mut metadata_file_path = path.clone();
                 metadata_file_path.push(".bhc/.meta/meta.json");
 
-                let mut x = if found_paths.contains(&metadata_file_path) {
+                let mut metadata = if found_paths.contains(&metadata_file_path) {
                     match open_workspace_metadata(&metadata_file_path) {
                         Ok(value) => value,
                         Err(error) => {
@@ -226,6 +229,17 @@ impl Backend {
                         }
                     }
                 };
+
+                metadata.css_files
+                .iter()
+                .for_each(|x| if !grouped_files.css_files.contains(&Path::new(&x.file_name).to_path_buf()){
+                    // create the file
+                    // then create the complimenting css metadata file
+                } else {
+                    // read the file and make sure that last_updated > modified date
+                })
+
+                //forsen
 
                 // I've got the workspace metadata primed.
                 // I need to read it to see if it contains all the css and html files in it
@@ -250,11 +264,6 @@ impl Backend {
             }
         }
     }
-}
-
-fn error_handle<S: Into<String>>(error_string: &mut String, error_flag: &mut bool, new_error: String){
-    error_string = new_error;
-    error_flag = true;
 }
 
 pub fn recursive_file_search(path: &PathBuf, found_paths: &mut Vec<PathBuf>) {
@@ -311,7 +320,7 @@ mod tests {
 
         let path = Path::new("D:/programming/web-dev/xd").to_path_buf();
 
-        recursive_file_search(path, &mut x);
+        recursive_file_search(&path, &mut x);
 
         x.iter().for_each(|path| println!("{:?}", path))
     }
