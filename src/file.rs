@@ -19,12 +19,12 @@ impl Backend {
             Ok(result) => workspace_paths.push(result),
             Err(_) => {
                 error_occured = true;
-                error_string = path.uri.to_string()
+                error_string = path.uri.to_string();
             }
         });
 
         if error_occured {
-            return Err(format!("Error transforming uri to file path: {}", error_string).to_string());
+            return Err(format!("Error transforming uri to file path: {}", error_string));
         }
 
         Ok(workspace_paths)
@@ -33,14 +33,14 @@ impl Backend {
     fn open_file(&self, file_path: &PathBuf) -> Result<String, String> {
         let file = match File::open(file_path) {
             Ok(result) => result,
-            Err(error) => return Err(format!("File Opening Error: Unable to open file ({:?}) - {}", file_path, error).to_string()),
+            Err(error) => return Err(format!("File Opening Error: Unable to open file ({:?}) - {}", file_path, error)),
         };
 
         let mut buf_reader = BufReader::new(file);
         let mut contents = String::new();
         match buf_reader.read_to_string(&mut contents) {
             Ok(buffer) => buffer,
-            Err(error) => return Err(format!("File Opening Error: Unable to read file ({:?}) - {}", file_path, error).to_string()),
+            Err(error) => return Err(format!("File Opening Error: Unable to read file ({:?}) - {}", file_path, error)),
         };
 
         Ok(contents)
@@ -103,7 +103,7 @@ impl Backend {
         if css_path.is_relative() {
             match css_path.absolutize_from(document_path) {
                 Ok(value) => return Ok(Some(value.to_path_buf())),
-                Err(error) => return Err(format!("Error trying to find absolute path for {:?}: {:?}", css_path, error).to_string()),
+                Err(error) => return Err(format!("Error trying to find absolute path for {:?}: {:?}", css_path, error)),
             };
         }
 
@@ -117,7 +117,7 @@ impl Backend {
 
         let workspace_path = match memory.get_workspace_folder(&file_path) {
             Some(value) => value,
-            None => return Err(format!("Unable to find workspace path for given file: {:?}", file_path).to_string()),
+            None => return Err(format!("Unable to find workspace path for given file: {:?}", file_path)),
         };
 
         let file_destination = get_full_path(&file_path, &workspace_path);
@@ -161,7 +161,7 @@ impl Backend {
 
         match fs::write(save_path, css_string) {
             Ok(_) => (),
-            Err(error) => return Err(format!("Error occurred trying to write to the file ({:?}), {:?}", save_path, error).to_string()),
+            Err(error) => return Err(format!("Error occurred trying to write to the file ({:?}), {:?}", save_path, error)),
         };
 
         Ok(save_path.clone())
@@ -178,7 +178,7 @@ pub fn create_dir_and_file(file_path: &PathBuf) -> Result<(), String> {
 
     match File::create(file_path) {
         Ok(_) => (),
-        Err(error) => return Err(format!("Error occurred trying to create the file: ({:?}), {:?}", file_path, error).to_string()),
+        Err(error) => return Err(format!("Error occurred trying to create the file: ({:?}), {:?}", file_path, error)),
     }
 
     Ok(())

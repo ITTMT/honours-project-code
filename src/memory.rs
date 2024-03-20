@@ -46,10 +46,7 @@ impl Memory {
         let workspace_paths = match backend.client.workspace_folders().await {
             Ok(value) => match value {
                 Some(value) => value,
-                None => {
-                    self.add_workspace(env::temp_dir());
-                    return;
-                }
+                None => return,
             },
             Err(error) => {
                 backend.log_error(format!("Error occurred trying to get workspace folders: {}", error)).await;
@@ -63,8 +60,8 @@ impl Memory {
         };
     }
 
-    pub fn get_all_workspaces(&self) -> Vec<PathBuf> {
-        self.workspace_paths.clone()
+    pub fn get_all_workspaces(&self) -> &Vec<PathBuf> {
+        &self.workspace_paths
     }
 }
 

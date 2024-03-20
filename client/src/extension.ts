@@ -47,6 +47,7 @@ export function activate(context: vscode.ExtensionContext) {
 	};
 
 	client = new LanguageClient("bhc-language-server", "bhc language server", serverOptions, clientOptions);
+
 	client.start();
 	
 	// Custom command to open a text document, need this because I want to be able to open a window side by side to a document rather than override a currently open document.

@@ -2,20 +2,22 @@ mod bhc_commands;
 mod file;
 mod logging;
 mod memory;
-mod metadata;
 mod error;
+mod metadata;
 
-
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::{env, fs};
+use std::fs;
 
 use bhc_commands::BhcShowDocumentParams;
+use chrono::{DateTime, Utc};
 use error::Error;
 use logging::Logging;
-use metadata::workspace_metadata::{create_workspace_metadata, open_workspace_metadata, WorkspaceMetaData};
+use metadata::workspace_metadata::id_to_json_file_name;
+use metadata::{css_metadata::CssMetaData, workspace_metadata::{create_workspace_metadata, open_workspace_metadata}};
 use memory::Memory;
-use metadata::GroupedFiles;
+use metadata::{css_metadata, GroupedFiles, Metadata};
 use once_cell::sync::Lazy;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
@@ -96,7 +98,7 @@ impl LanguageServer for Backend {
         self.first_time_setup_check().await;
 
         if params.text_document.language_id == "html" {
-            let mut error_string: String = "".to_string();
+            let mut error_string = String::new();
             let mut error_occurred = false;
             let mut css_file_path: PathBuf = Path::new("").to_path_buf();
 
@@ -177,10 +179,7 @@ impl Backend {
             let workspace_paths = match self.client.workspace_folders().await {
                 Ok(value) => match value {
                     Some(value) => value,
-                    None => {
-                        memory.lock().unwrap().add_workspace(env::temp_dir());
-                        return;
-                    }
+                    None => return
                 },
                 Err(error) => {
                     self.log_error(format!("Error occurred trying to get workspace folders: {}", error)).await;
@@ -195,21 +194,27 @@ impl Backend {
 
             // need to iterate through each html and css file to create the metadata.
 
-            let workspace_paths = memory.lock().unwrap().get_all_workspaces();
+            let workspace_paths = memory.lock().unwrap().get_all_workspaces().clone();
 
             let mut error_handler = Error::new();
 
             workspace_paths
-            .into_iter()
-            .for_each(|path| {
-                let mut found_paths: Vec<PathBuf> = Vec::new();
-                recursive_file_search(&path, &mut found_paths);
+            .iter()
+            .for_each(|workspace_path| {
+                let mut css_metadata_path = workspace_path.clone();
+                css_metadata_path.push(".bhc/.meta/css");
+                let mut html_metadata_path = workspace_path.clone();
+                html_metadata_path.push(".bhc/.meta/html");
 
+                let mut found_paths: Vec<PathBuf> = Vec::new();
+                recursive_file_search(workspace_path, &mut found_paths);
+
+                // grouped files are all the files that can be found in the workspace that are either .html, .css, or .json
                 let grouped_files: GroupedFiles = found_paths.clone().into();
 
                 // need to first of all check if the workspace is a web project, otherwise I don't need to do anything for it.
 
-                let mut metadata_file_path = path.clone();
+                let mut metadata_file_path = workspace_path.clone();
                 metadata_file_path.push(".bhc/.meta/meta.json");
 
                 let mut metadata = if found_paths.contains(&metadata_file_path) {
@@ -221,7 +226,7 @@ impl Backend {
                         }
                     }
                 } else {
-                    match create_workspace_metadata(&metadata_file_path) {
+                    match create_workspace_metadata(&metadata_file_path, &workspace_path) {
                         Ok(value) => value,
                         Err(error) => {
                             error_handler.handle_error(error);
@@ -230,16 +235,67 @@ impl Backend {
                     }
                 };
 
-                metadata.css_files
-                .iter()
-                .for_each(|x| if !grouped_files.css_files.contains(&Path::new(&x.file_name).to_path_buf()){
-                    // create the file
-                    // then create the complimenting css metadata file
-                } else {
-                    // read the file and make sure that last_updated > modified date
-                })
+                let css_metadata_map: HashMap<PathBuf, PathBuf> = grouped_files.map_css_files(); 
 
-                //forsen
+                // for each file in the grouped files, we need to find it's corresponding metadata file, we get this by going through the grouped_file filename (pathbuf) and seeing if any of the metadata css_files share the same name, the problem is that the css metadata file names will be their <id>.json (1.json, 2.json... etc) so we need to extract(?) the associated filename with their Id's, so maybe we need to make a Map of KVP's? (Key: PathBuf, value: int ID?)
+
+                grouped_files
+                .css_files
+                .iter()
+                .for_each(|css_file| match css_metadata_map.get_key_value(css_file) {
+                    Some((_,css_metadata_file_path)) => {
+                        match fs::read_to_string(css_metadata_file_path) {
+                            Ok(contents) => {
+
+                                // it exists so we can deserialize it
+                                let mut css_metadata: CssMetaData = serde_json::from_str(&contents).unwrap();
+
+                                // get the metadata of the original file
+                                let css_file_metadata = fs::metadata(&css_metadata.absolute_path).unwrap();
+
+                                let file_last_modified: DateTime<Utc> = css_file_metadata.modified().unwrap().into();
+
+                                // if the original file has been updated more recently than the proclaimed last_updated time then we need to update the contents of 
+                                if file_last_modified > css_metadata.last_updated {
+                                    match css_metadata.update_metadata(css_metadata_file_path) {
+                                        Ok(_) => (),
+                                        Err(error) => {
+                                            error_handler.handle_error(error);
+                                            return
+                                        }
+                                    };
+                                }
+                            },
+                            Err(error) => ()
+                        }
+
+                    }, 
+                    None => {
+                        // we cannot know what sheets have been imported ahead of time
+                        // we can know what styles there are though
+                        // get the next available id
+                        let file_name = id_to_json_file_name(metadata.get_next_available_css_id());
+
+                        let mut save_path = css_metadata_path.clone();
+                        save_path.push(&file_name);
+
+                        // create the file <id>.json
+                        match CssMetaData::create_metadata(&save_path, css_file) {
+                            Ok(_) => (),
+                            Err(error) => {
+                                error_handler.handle_error(error);
+                                return
+                            }
+                        };
+
+
+                        // 
+                    } // We need to create the metadata file in the .bhc/.meta/css folder. We will get the necessary <id>.json from the list in the metadata variable 
+                });
+
+                if error_handler.error_occurred {
+                    return
+                }
 
                 // I've got the workspace metadata primed.
                 // I need to read it to see if it contains all the css and html files in it

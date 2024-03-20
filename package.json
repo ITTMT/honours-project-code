@@ -15,8 +15,8 @@
 		"vscode": "^1.66.0"
 	},
 	"activationEvents": [
-		"onLanguage:html",
-		"onLanguage:css"
+		"workspaceContains:**/*.html",
+		"workspaceContains:**/*.css"
 	],
 	"main": "./client/out/extension.js",
 	"contributes": {
