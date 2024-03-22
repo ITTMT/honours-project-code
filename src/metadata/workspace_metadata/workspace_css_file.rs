@@ -1,4 +1,8 @@
+use std::path::Path;
+
 use serde::{Deserialize, Serialize};
+
+use crate::metadata::css_metadata::CssMetaData;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct WorkspaceCssFile {
@@ -21,4 +25,26 @@ impl WorkspaceCssFile {
             html_files: None
         }
     }
+
+    //TODO: Make a function that parses a CSSMetadata into the WorkspaceCssFile
+
+    pub fn parse(css_metadata: &CssMetaData, id: &u32) -> WorkspaceCssFile {
+        WorkspaceCssFile {
+            id: id.clone(),
+            file_name: css_metadata.file_name.clone(),
+            absolute_path: css_metadata.absolute_path.clone(),
+            is_shared: check_is_shared(&css_metadata.absolute_path),
+            html_files: None,
+        }
+    }
+}
+
+fn check_is_shared(absolute_path: &str) -> bool {
+    let path = Path::new(absolute_path).to_path_buf();
+
+    if let Some(remaining_path) = path.parent() {
+        return remaining_path.ends_with("/.bhc/.shared")
+    }
+
+    false
 }

@@ -2,15 +2,10 @@ pub mod workspace_css_file;
 pub mod workspace_html_file;
 
 use std::{fs::{self, File}, path::PathBuf};
-
 use chrono::{serde::ts_seconds, DateTime, Utc};
 use serde::{self, Deserialize, Serialize};
 
-use crate::file::create_dir_and_file;
-
 use self::{workspace_css_file::WorkspaceCssFile, workspace_html_file::WorkspaceHtmlFile};
-
-use super::{css_metadata::CssMetaData, Metadata};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct WorkspaceMetaData {
@@ -88,7 +83,7 @@ impl WorkspaceMetaData {
     }
 }
 
-pub fn id_to_json_file_name(id: u32) -> String {
+pub fn id_to_json_file_name(id: &u32) -> String {
     let mut file_name = String::from(id.to_string());
     file_name.push_str(".json");
 

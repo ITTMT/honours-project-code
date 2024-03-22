@@ -239,6 +239,8 @@ impl Backend {
 
                 // for each file in the grouped files, we need to find it's corresponding metadata file, we get this by going through the grouped_file filename (pathbuf) and seeing if any of the metadata css_files share the same name, the problem is that the css metadata file names will be their <id>.json (1.json, 2.json... etc) so we need to extract(?) the associated filename with their Id's, so maybe we need to make a Map of KVP's? (Key: PathBuf, value: int ID?)
 
+                // TODO: Need to check the metadata files if it exists.
+
                 grouped_files
                 .css_files
                 .iter()
@@ -274,7 +276,9 @@ impl Backend {
                         // we cannot know what sheets have been imported ahead of time
                         // we can know what styles there are though
                         // get the next available id
-                        let file_name = id_to_json_file_name(metadata.get_next_available_css_id());
+                        let id = metadata.get_next_available_css_id();
+
+                        let file_name = id_to_json_file_name(&id);
 
                         let mut save_path = css_metadata_path.clone();
                         save_path.push(&file_name);
@@ -287,10 +291,12 @@ impl Backend {
                                 return
                             }
                         };
-
-
+                        
                         // 
                     } // We need to create the metadata file in the .bhc/.meta/css folder. We will get the necessary <id>.json from the list in the metadata variable 
+                    
+                    // TODO: Add the cssmetadata to the metadata so the loop can continue
+                    // TODO: Once we are done all the files we save the metadata.
                 });
 
                 if error_handler.error_occurred {
