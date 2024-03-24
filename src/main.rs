@@ -86,6 +86,10 @@ impl LanguageServer for Backend {
 
     async fn initialized(&self, _: InitializedParams) {
         self.log_info("BHC language server initialized!").await;
+
+        // TODO: Move the first check stuff here
+        // TODO: Remove the MEMORY stuff, go entirely stateless
+        // TODO: Make helper functions to get the workspace we are in much simpler
     }
 
     async fn shutdown(&self) -> tower_lsp::jsonrpc::Result<()> {
