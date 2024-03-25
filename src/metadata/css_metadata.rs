@@ -2,7 +2,7 @@ pub mod css_attribute;
 pub mod css_file;
 pub mod css_style;
 
-use std::{collections::HashMap, fs, path::{Path, PathBuf}};
+use std::{collections::HashMap, fs, path::PathBuf};
 use chrono::{DateTime, serde::ts_seconds, Utc};
 use cssparser::{ParseError, Parser, ParserInput, Token};
 use serde::{Deserialize, Serialize};
@@ -12,6 +12,7 @@ use super::Metadata;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct CssMetaData {
+    pub id: u32,
 	pub file_name: String,
 	pub absolute_path: String,
 
@@ -28,6 +29,7 @@ pub struct CssMetaData {
 impl CssMetaData {
 	pub fn new() -> CssMetaData {
 		CssMetaData {
+            id: 0,
 			file_name: String::new(),
 			absolute_path: String::new(),
 			last_updated: Utc::now(),
@@ -68,7 +70,7 @@ impl CssMetaData {
 }
 
 impl Metadata<CssMetaData> for CssMetaData {
-	fn create_metadata(metadata_path: &PathBuf, file_path: &PathBuf) -> Result<CssMetaData, String> {
+	fn create_metadata(metadata_path: &PathBuf, file_path: &PathBuf, id: &u32) -> Result<CssMetaData, String> {
 
 		match create_dir_and_file(&metadata_path) {
 			Ok(_) => (),
@@ -82,6 +84,7 @@ impl Metadata<CssMetaData> for CssMetaData {
 
 		let mut metadata = CssMetaData::new();
 
+        metadata.id = *id;
 		metadata.file_name = file_path.file_name().unwrap().to_str().unwrap().to_string();
 		metadata.absolute_path = file_path.to_str().unwrap().to_string();
 		metadata.last_updated = Utc::now();
@@ -98,7 +101,7 @@ impl Metadata<CssMetaData> for CssMetaData {
 	}
 	
 	fn update_metadata(&mut self, metadata_path: &PathBuf) -> Result<CssMetaData, String> {
-        let file_path = Path::new(&self.absolute_path).to_path_buf();
+        let file_path = PathBuf::from(&self.absolute_path);
         
         let mut new_metadata = self.clone();
 
@@ -285,6 +288,7 @@ mod tests {
         let files = vec![file1];
 
         let metadata = CssMetaData{
+            id: 0,
             file_name: String::from("test.css"), 
             absolute_path: String::from("D:/programming/web-dev/xd/css/test.css"), 
             last_updated: DateTime::from_timestamp(1710090300, 0).unwrap(), 

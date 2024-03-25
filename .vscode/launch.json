@@ -18,8 +18,14 @@
 			},
 			"env": {
 				"SERVER_PATH": "${workspaceRoot}/target/debug/bhc-language-server"
-			}
+			},
 		},
+        {
+            "type": "lldb",
+            "request": "attach",
+            "name": "Attach Debugger to running process",
+            "program": "${workspaceRoot}/target/debug/bhc-language-server",
+        },
 		{
 			"name": "Language Server E2E Test",
 			"type": "extensionHost",
@@ -67,13 +73,8 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "attach",
-            "name": "Attach Debugger to running process",
-            "program": "${workspaceRoot}/target/debug/bhc-language-server"
+            "cwd": "${workspaceFolder}",
+
         }
 	],
     "compounds": [

@@ -125,7 +125,6 @@ dependencies = [
  "cssparser",
  "env_logger",
  "html5gum",
- "once_cell",
  "path-absolutize",
  "serde",
  "serde_json",

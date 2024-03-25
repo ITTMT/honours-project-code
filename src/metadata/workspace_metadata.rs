@@ -5,6 +5,8 @@ use std::{fs::{self, File}, path::PathBuf};
 use chrono::{serde::ts_seconds, DateTime, Utc};
 use serde::{self, Deserialize, Serialize};
 
+use crate::file::create_dir_and_file;
+
 use self::{workspace_css_file::WorkspaceCssFile, workspace_html_file::WorkspaceHtmlFile};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -27,12 +29,7 @@ impl WorkspaceMetaData {
             css_files: Vec::new(),
         }
     }
-}
 
-
-
-
-impl WorkspaceMetaData {
     pub fn get_next_available_css_id(&self) -> u32 {
         let mut smallest_id: u32 = 1;
 
@@ -65,21 +62,34 @@ impl WorkspaceMetaData {
         smallest_id
     }
 
-    
-
-
-    // This is just for creating the initial metadata, there will be nothing added to it, but since it is the parent of all other metadata parts, it needs to exist first and we can slowly start filling it up, we can then call update each time to add more stuff
-    
-    pub fn update_metadata(&mut self, file_path: &PathBuf) -> Result<u32, String> {
-        todo!()
+    // pub fn get_css_metadata(&self, css_file_path: &PathBuf) -> CssMetaData {
         
-        // we are given a file path, split off if html or css
 
-        // then we need to see if it exists
 
-        // make sure to sort the files by <id> before saving.
+    // }
 
-        // return the id we get
+    
+    pub fn add_css_file(&mut self, css_file_metadata: WorkspaceCssFile) {
+        self.css_files.push(css_file_metadata)
+    }
+
+    /// Save the WorkspaceMetaData back to `meta.json`
+    /// Returns `Ok(())` if it succeeds
+    /// Returns `Err(String)` if it is unable to save the file. Effectively meaning the extension won't work... 
+    pub fn update_metadata(&mut self, file_path: &PathBuf) -> Result<(), String> {
+        
+        match create_dir_and_file(&file_path) {
+			Ok(_) => (),
+			Err(error) => return Err(error)
+		};
+
+		self.last_updated = Utc::now();
+
+		match fs::write(&file_path, serde_json::to_string_pretty(&self).unwrap()) {
+			Ok(_) => return Ok(()),
+			Err(error) => return Err(format!("Error writing workspace metadata to file: ({:?}) {:?}", &file_path, error))
+		};
+
     }
 }
 

@@ -1,4 +1,6 @@
-use std::{collections::HashMap, ffi::OsStr, fs, path::{Path, PathBuf}};
+use std::{collections::HashMap, ffi::OsStr, fs, path::PathBuf};
+
+use crate::{CSS_METADATA_PATH, HTML_METADATA_PATH, METADATA_PATH, VIRTUAL_PATH};
 
 use self::css_metadata::CssMetaData;
 
@@ -32,7 +34,7 @@ impl GroupedJsonFiles {
 }
 
 pub trait Metadata<T> {
-	fn create_metadata(metadata_path: &PathBuf, file_path: &PathBuf) -> Result<T, String>;
+	fn create_metadata(metadata_path: &PathBuf, file_path: &PathBuf, id: &u32) -> Result<T, String>;
 
 	fn update_metadata(&mut self, metadata_save_path: &PathBuf) -> Result<T, String>;
 }
@@ -47,50 +49,57 @@ impl GroupedFiles {
 	}
 
 	pub fn sort_files(&mut self, unorganised_files: &Vec<PathBuf>) {
-		unorganised_files
-		.iter()
-		.for_each(|file_path| match file_path.extension().and_then(OsStr::to_str) {
-			Some("css") => self.css_files.push(file_path.clone()),
-			Some("html") => self.html_files.push(file_path.clone()),
-			Some("json") => {
-				// we discard json files that are not in .bhc/.meta
-				match file_path.parent() {
-					Some(path) => {
-						if path.ends_with(".bhc/.meta") {
-							self.json_files.meta_file = file_path.clone();
-						} else if path.ends_with(".bhc/.meta/css") {
-							self.json_files.css_files.push(file_path.clone())
-						} else if path.ends_with(".bhc/.meta/html") {
-							self.json_files.html_files.push(file_path.clone())
-						}
-					},
-					None => ()
+		for file_path in unorganised_files {
+			if let Some(path) = file_path.to_str() {
+				if path.contains(VIRTUAL_PATH){
+					continue
 				}
-			},
-			
-			_ => (),
-		})
+			}
+
+			match file_path.extension().and_then(OsStr::to_str) {
+				Some("css") => self.css_files.push(file_path.clone()),
+				Some("html") => self.html_files.push(file_path.clone()),
+				Some("json") => {
+					if file_path.ends_with(METADATA_PATH) {
+						self.json_files.meta_file = file_path.clone();
+					} else {
+						if let Some(path) = file_path.parent() {
+							if path.ends_with(CSS_METADATA_PATH) {
+								self.json_files.css_files.push(file_path.clone())
+							} else if path.ends_with(HTML_METADATA_PATH) {
+								self.json_files.html_files.push(file_path.clone())
+							}
+						}
+					}
+				},
+				
+				_ => (),
+			}
+		}
 	}
 
-	// Key = Actual CSS File PathBuf
-	// Value = Corresponding CSS Metadata File PathBuf
+	/// From the JSON CSS Files, create a HashMap of `CSS Absolute Path` Key and `Metadata File Path` Values
 	pub fn map_css_files(&self) -> HashMap<PathBuf, PathBuf> {
 		let mut css_map: HashMap<PathBuf, PathBuf> = HashMap::new();
 		
 		self.json_files
 		.css_files
 		.iter()
-		.for_each(|css_file|{
-			let json_string = fs::read_to_string(css_file).unwrap(); // File will exist (only time it might not is if the person deletes a file between the creation of the vector and the reading of the file)
+		.for_each(|metadata_file_path|{
+			let json_string = fs::read_to_string(metadata_file_path).unwrap(); // File will exist (only time it might not is if the person deletes a file between the creation of the vector and the reading of the file)
 
 			let parsed_css_file: CssMetaData = serde_json::from_str(&json_string).unwrap();
 
-			let metadata_path = Path::new(&parsed_css_file.absolute_path).to_path_buf();
+			let css_file_path = PathBuf::from(&parsed_css_file.absolute_path);
 
-			css_map.insert(css_file.clone(), metadata_path);
+			css_map.insert(css_file_path,metadata_file_path.clone());
 		});
 		
 		css_map
+	}
+
+	pub fn contains_workspace_metadata(&self) -> bool {
+		self.json_files.meta_file.components().count() > 0
 	}
 }
 
@@ -106,14 +115,14 @@ impl Into<GroupedFiles> for Vec<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-	use std::path::{Path, PathBuf};
+	use std::path::PathBuf;
 	use crate::metadata::{GroupedFiles, GroupedJsonFiles};
 
 	#[test]
 	fn sort_files_test() {
-		let path1: PathBuf = Path::new("C:/random/file.css").to_path_buf();
-		let path2: PathBuf = Path::new("C:/random/file.html").to_path_buf();
-		let path3: PathBuf = Path::new("C:/random/.bhc/.meta/file.json").to_path_buf();
+		let path1: PathBuf = PathBuf::from("C:/random/file.css");
+		let path2: PathBuf = PathBuf::from("C:/random/file.html");
+		let path3: PathBuf = PathBuf::from("C:/random/.bhc/.meta/file.json");
 
 
 		let paths: Vec<PathBuf> = vec![path1.clone(), path2.clone(), path3.clone()];

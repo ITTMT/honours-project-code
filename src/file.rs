@@ -1,35 +1,26 @@
-use crate::{memory::Memory, Backend};
+use crate::{Backend, VIRTUAL_PATH};
 use html5gum::{HtmlString, Token, Tokenizer};
 use path_absolutize::Absolutize;
 use std::{
-    fs::{self, File},
-    io::{BufReader, Read},
-    ops::Deref,
-    path::{Path, PathBuf},
-};
-use tower_lsp::lsp_types::{DidOpenTextDocumentParams, TextDocumentItem, WorkspaceFolder};
+    collections::HashMap, ffi::OsStr, fs::{self, File}, io::{BufReader, Read}, ops::Deref, path::PathBuf};
+use tower_lsp::lsp_types::{DidOpenTextDocumentParams, TextDocumentItem};
+
+struct FormattedCssFile {
+    file_path: PathBuf,
+    included_files: Vec<FileMetaData>,
+    lines: HashMap<u32, FileMetaData>,
+}
+
+struct FileMetaData {
+    id: u32,
+    file_name: String,
+    is_shared: bool,
+}
+
+//TODO: Think about what is needed to send back to the client to get the colouring of lines correct
+// for each line we need to know its owner, 
 
 impl Backend {
-    pub fn get_workspace_paths(&self, folders: Vec<WorkspaceFolder>) -> Result<Vec<PathBuf>, String> {
-        let mut workspace_paths: Vec<PathBuf> = Vec::new();
-        let mut error_occured = false;
-        let mut error_string: String = String::new();
-
-        folders.iter().for_each(|path| match path.uri.to_file_path() {
-            Ok(result) => workspace_paths.push(result),
-            Err(_) => {
-                error_occured = true;
-                error_string = path.uri.to_string();
-            }
-        });
-
-        if error_occured {
-            return Err(format!("Error transforming uri to file path: {}", error_string));
-        }
-
-        Ok(workspace_paths)
-    }
-
     fn open_file(&self, file_path: &PathBuf) -> Result<String, String> {
         let file = match File::open(file_path) {
             Ok(result) => result,
@@ -71,13 +62,10 @@ impl Backend {
                 Some((_, value)) => {
                     let s = value.deref().to_vec();
                     let string_result = String::from_utf8_lossy(&s);
-                    let pathbuf = Path::new(&string_result.to_string()).to_path_buf();
+                    let pathbuf = PathBuf::from(&string_result.to_string());
 
                     match self.find_absolute_path(&absolute_path_of_html, &pathbuf) {
-                        Ok(value) => match value {
-                            Some(value) => css_vec.push(value),
-                            None => (),
-                        },
+                        Ok(value) => css_vec.push(value),
                         Err(error) => {
                             error_occurred = true;
                             error_string = error;
@@ -95,47 +83,63 @@ impl Backend {
         Ok(css_vec)
     }
 
-    fn find_absolute_path(&self, document_path: &PathBuf, css_path: &PathBuf) -> Result<Option<PathBuf>, String> {
+    /// For a given `document_path`, which will be an absolute path of a HTML document, and a `css_path` which may or may not be an absolute path, 
+    /// Returns `Ok(PathBuf)` if it was able to find the path. This will be the absolute path of the `css_path`
+    /// Returns `Err(String)` if it was unable to find the absolute path for the provided `css_path`
+    fn find_absolute_path(&self, document_path: &PathBuf, css_path: &PathBuf) -> Result<PathBuf, String> {
         if css_path.exists() && css_path.is_absolute() {
-            return Ok(Some(css_path.clone()));
+            return Ok(css_path.clone());
         }
 
         if css_path.is_relative() {
             match css_path.absolutize_from(document_path) {
-                Ok(value) => return Ok(Some(value.to_path_buf())),
-                Err(error) => return Err(format!("Error trying to find absolute path for {:?}: {:?}", css_path, error)),
+                Ok(value) => return Ok(value.to_path_buf()),
+                Err(error) => return Err(format!("Error trying` to find absolute path for {:?}: {:?}", css_path, error)),
             };
         }
 
-        Ok(None)
+        Err(format!("Error trying to find CSS File: {:?}", css_path))
     }
 
-    pub fn produce_css_file(&self, params: DidOpenTextDocumentParams, memory: &Memory) -> Result<PathBuf, String> {
+    
+    pub async fn get_css_file(&self, params: DidOpenTextDocumentParams) -> Result<PathBuf, String> {
         let file_path = file_to_pathbuf(&params.text_document);
 
-        let file_path_root = file_path.parent().unwrap().to_path_buf(); // add option check
+        if let Some(file_path_root) = file_path.parent(){
+            let file_pathbuf = file_path_root.to_path_buf();
 
-        let workspace_path = match memory.get_workspace_folder(&file_path) {
-            Some(value) => value,
-            None => return Err(format!("Unable to find workspace path for given file: {:?}", file_path)),
-        };
+            let workspace_path = match self.get_workspace_folder(&file_path).await {
+                Ok(value) => value,
+                Err(error) => return Err(error),
+            };
 
-        let file_destination = get_full_path(&file_path, &workspace_path);
+            let file_destination = get_full_path(&file_path, &workspace_path);
+    
+            let css_files = match self.get_css_file_paths(&file_pathbuf, &params.text_document.text) {
+                Ok(value) => value,
+                Err(error) => return Err(error),
+            };
 
-        let css_files = match self.get_css_file_paths(&file_path_root, &params.text_document.text) {
-            Ok(value) => value,
-            Err(error) => return Err(error),
-        };
+            //TODO: Add logic here to make new file if multiple css files, or just return normal file
 
-        let css_string = match self.generate_css_string(css_files) {
-            Ok(value) => value,
-            Err(error) => return Err(error),
-        };
+            match css_files.len() {
+                0 => return Ok(PathBuf::new()),
+                1 => return Ok(css_files[0].clone()), //TODO: Add logic to return file with metadata.
+                _ => {
+                    let css_string = match self.generate_css_string(&css_files) {
+                        Ok(value) => value,
+                        Err(error) => return Err(error),
+                    };
 
-        return self.save_css_file(&css_string, &file_destination);
+                    return self.save_css_file(&css_string, &file_destination);
+                }
+            }
+        }; 
+
+        Err(format!("Could not get css file for file: {:?}", file_path))
     }
 
-    fn generate_css_string(&self, css_files: Vec<PathBuf>) -> Result<String, String> {
+    fn generate_css_string(&self, css_files: &Vec<PathBuf>) -> Result<String, String> {
         let mut concatenated_string: String = String::new();
 
         for (i, file) in css_files.iter().enumerate() {
@@ -193,11 +197,11 @@ fn file_to_pathbuf(document: &TextDocumentItem) -> PathBuf {
     file_path
 }
 
+/// Get the full PathBuf for a virtual file. The virtual file gets created when a HTML file contains more than one CSS link inside it so we can concatenate all of its contents.
 fn get_full_path(file_pathbuf: &PathBuf, workspace_pathbuf: &PathBuf) -> PathBuf {
     let extra_path = file_pathbuf.strip_prefix(workspace_pathbuf);
 
-    let mut final_path: PathBuf = workspace_pathbuf.clone();
-    final_path.push(".bhc");
+    let mut final_path: PathBuf = workspace_pathbuf.join(VIRTUAL_PATH);
 
     match extra_path {
         Ok(value) => {
@@ -210,41 +214,91 @@ fn get_full_path(file_pathbuf: &PathBuf, workspace_pathbuf: &PathBuf) -> PathBuf
     final_path
 }
 
+/// For a given path, return all of the files it contains as a `Vec<PathBuf>`
+pub fn recursive_file_search(path: &PathBuf) -> Vec<PathBuf> {
+    let mut found_paths: Vec<PathBuf> = Vec::new();
+    
+    match fs::read_dir(path) {
+        Ok(value) => value.for_each(|res| match res {
+            Ok(value) => {
+                if value.path().is_dir() {
+                    inner_recursive_file_search(&value.path(), &mut found_paths);
+
+                } else if value.path().is_file() {
+                    found_paths.push(value.path())
+                }
+            }
+            Err(_) => (),
+        }),
+        Err(_) => (),
+    }
+
+    found_paths
+}
+
+fn inner_recursive_file_search(path: &PathBuf, found_paths: &mut Vec<PathBuf>) {
+    match fs::read_dir(path) {
+        Ok(value) => value.for_each(|res| match res {
+            Ok(value) => {
+                if value.path().is_dir() {
+                    inner_recursive_file_search(&value.path(), found_paths);
+
+                } else if value.path().is_file() {
+                    found_paths.push(value.path())
+                }
+            }
+            Err(_) => (),
+        }),
+        Err(_) => (),
+    }
+}
+
+pub fn contains_web_documents(file_paths: &Vec<PathBuf>) -> bool {
+    for file_path in file_paths {
+        if let Some(file_extension) = file_path.extension().and_then(OsStr::to_str) {
+            if ["html", "css"].contains(&file_extension) {
+                return true
+            }
+        }
+    }
+
+    false
+}
+
 /* #region Unit Tests */
 
 #[cfg(test)]
 mod tests {
 
-    use std::path::{Path, PathBuf};
+    use std::path::PathBuf;
 
     use tower_lsp::LspService;
 
-    use crate::{file::get_full_path, memory::Memory, Backend};
+    use crate::{file::get_full_path, Backend};
 
     #[test]
     fn test_find_absolute_path() {
         let (service, _) = LspService::build(|client| Backend { client }).finish();
 
         let x = service.inner().find_absolute_path(
-            &Path::new("C:\\Windows\\System32\\en-GB").to_path_buf(),
-            &Path::new("..\\en\\AuthFWSnapIn.Resources.dll").to_path_buf(),
+            &PathBuf::from("C:\\Windows\\System32\\en-GB"),
+            &PathBuf::from("..\\en\\AuthFWSnapIn.Resources.dll"),
         );
 
-        assert_eq!(Path::new("C:\\Windows\\System32\\en\\AuthFWSnapIn.Resources.dll").to_path_buf(), x.unwrap().unwrap());
+        assert_eq!(PathBuf::from("C:\\Windows\\System32\\en\\AuthFWSnapIn.Resources.dll"), x.unwrap());
 
         let y = service.inner().find_absolute_path(
-            &Path::new("C:\\Windows\\System32\\en-GB").to_path_buf(),
-            &Path::new("C:\\Windows\\System32\\en\\AuthFWSnapIn.Resources.dll").to_path_buf(),
-        );
+            &PathBuf::from("C:\\Windows\\System32\\en-GB"),
+            &PathBuf::from("C:\\Windows\\System32\\en\\AuthFWSnapIn.Resources.dll"));
 
-        assert_eq!(Path::new("C:\\Windows\\System32\\en\\AuthFWSnapIn.Resources.dll").to_path_buf(), y.unwrap().unwrap());
+        assert_eq!(PathBuf::from("C:\\Windows\\System32\\en\\AuthFWSnapIn.Resources.dll"), y.unwrap());
     }
 
     #[test]
     fn test_get_css_file_paths() {
         let (service, _) = LspService::build(|client| Backend { client }).finish();
 
-        let absolute_path = Path::new("C:/Users/Ollie/Documents/serverexampletest/html_files/test.html").to_path_buf();
+        let absolute_path = PathBuf::from("C:/Users/Ollie/Documents/serverexampletest/html_files/test.html");
 
         let file_contents = r#"<!DOCTYPE html>
 		<html lang="en#">
@@ -261,8 +315,8 @@ mod tests {
 		</html>"#;
 
         let mut expected: Vec<PathBuf> = Vec::new();
-        expected.push(Path::new("C:/Users/Ollie/Documents/serverexampletest/css_files/base.css").to_path_buf());
-        expected.push(Path::new("C:/Users/Ollie/Documents/serverexampletest/css_files/stylesheet_1.css").to_path_buf());
+        expected.push(PathBuf::from("C:/Users/Ollie/Documents/serverexampletest/css_files/base.css"));
+        expected.push(PathBuf::from("C:/Users/Ollie/Documents/serverexampletest/css_files/stylesheet_1.css"));
 
         let x = service.inner().get_css_file_paths(&absolute_path, file_contents).unwrap();
 
@@ -272,30 +326,12 @@ mod tests {
     }
 
     #[test]
-    fn test_get_file_path() {
-        tokio_test::block_on(async {
-            let (_, _) = LspService::build(|client| Backend { client }).finish();
-
-            let mut memory = Memory::new();
-
-            let workspace_path = Path::new("C:/temp/random/path").to_path_buf();
-            let a = workspace_path.clone();
-
-            memory.add_workspace(workspace_path);
-
-            let file_pathbuf = Path::new("C:/temp/random/path/html/myfile.html").to_path_buf();
-
-            assert_eq!(memory.get_workspace_folder(&file_pathbuf).unwrap(), a);
-        })
-    }
-
-    #[test]
     fn test_get_full_path() {
-        let workspace_path = Path::new("C:/temp/random/path").to_path_buf();
+        let workspace_path = PathBuf::from("C:/temp/random/path");
 
-        let a = Path::new("C:/temp/random/path/.bhc/html/myfile.css").to_path_buf();
+        let a = PathBuf::from("C:/temp/random/path/.bhc/html/myfile.css");
 
-        let file_pathbuf = Path::new("C:/temp/random/path/html/myfile.html").to_path_buf();
+        let file_pathbuf = PathBuf::from("C:/temp/random/path/html/myfile.html");
 
         assert_eq!(get_full_path(&file_pathbuf, &workspace_path), a);
     }
@@ -316,7 +352,7 @@ p {
 }
 "#;
 
-        let save_path = Path::new("C:\\Users\\Ollie\\Documents\\testing123\\new_file.css").to_path_buf();
+        let save_path = PathBuf::from("C:\\Users\\Ollie\\Documents\\testing123\\new_file.css");
 
         assert_eq!(service.inner().save_css_file(file_contents, &save_path).unwrap(), save_path.clone());
     }
