@@ -30,6 +30,8 @@ impl CssStyle {
                 is_overwritten: None,
             });
 
+            //TODO: Maybe need to update is_overwritten if the value is the same as the source. Would require extra logic.
+
             existing_attribute.values.extend(new_attribute.values);
             if let Some(source) = new_attribute.source {
                 existing_attribute.source = Some(source);

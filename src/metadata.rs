@@ -2,7 +2,7 @@ use std::{collections::HashMap, ffi::OsStr, fs, path::PathBuf};
 
 use crate::{CSS_METADATA_PATH, HTML_METADATA_PATH, METADATA_PATH, VIRTUAL_PATH};
 
-use self::css_metadata::CssMetaData;
+use self::{css_metadata::CssMetaData, html_metadata::HtmlMetaData};
 
 pub mod css_metadata;
 pub mod workspace_metadata;
@@ -31,12 +31,6 @@ impl GroupedJsonFiles {
 			css_files: Vec::new(),
 		}
 	}
-}
-
-pub trait Metadata<T> {
-	fn create_metadata(metadata_path: &PathBuf, file_path: &PathBuf, id: &u32) -> Result<T, String>;
-
-	fn update_metadata(&mut self, metadata_save_path: &PathBuf) -> Result<T, String>;
 }
 
 impl GroupedFiles {
@@ -96,6 +90,23 @@ impl GroupedFiles {
 		});
 		
 		css_map
+	}
+
+	/// From the JSON HTML Files, create a HashMap of `HTML Absolute Path` Key and `Metadata File Path` Values
+	pub fn map_html_files(&self) -> HashMap<PathBuf, PathBuf> {
+		let mut html_map: HashMap<PathBuf, PathBuf> = HashMap::new();
+		
+		for metadata_file_path in &self.json_files.html_files {
+			let json_string = fs::read_to_string(metadata_file_path).unwrap(); // File will exist (only time it might not is if the person deletes a file between the creation of the vector and the reading of the file)
+	
+			let parsed_html_file: HtmlMetaData = serde_json::from_str(&json_string).unwrap();
+	
+			let html_file_path = PathBuf::from(&parsed_html_file.absolute_path);
+	
+			html_map.insert(html_file_path,metadata_file_path.clone());
+		}
+		
+		html_map
 	}
 
 	pub fn contains_workspace_metadata(&self) -> bool {

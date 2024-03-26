@@ -3,7 +3,7 @@ use std::{collections::HashMap, fs, path::PathBuf};
 use chrono::{DateTime, Utc};
 use tower_lsp::lsp_types::{TextDocumentItem, WorkspaceFolder};
 
-use crate::{file::{contains_web_documents, recursive_file_search}, logging::Logging, metadata::{css_metadata::CssMetaData, workspace_metadata::{create_workspace_metadata, id_to_json_file_name, open_workspace_metadata, workspace_css_file::WorkspaceCssFile, WorkspaceMetaData}, GroupedFiles, Metadata}, Backend, CSS_METADATA_PATH, HTML_METADATA_PATH, METADATA_PATH, SHARED_PATH};
+use crate::{file::{contains_web_documents, recursive_file_search}, logging::Logging, metadata::{css_metadata::CssMetaData, html_metadata::HtmlMetaData, workspace_metadata::{create_workspace_metadata, id_to_json_file_name, open_workspace_metadata, workspace_css_file::WorkspaceCssFile, workspace_html_file::WorkspaceHtmlFile, WorkspaceMetaData}, GroupedFiles}, Backend, CSS_METADATA_PATH, HTML_METADATA_PATH, METADATA_PATH, SHARED_PATH};
 
 impl Backend {
 	/// Get the workspaces that are currently open. Calls into the LSP [`workspace/workspaceFolders`](https://microsoft.github.io/language-server-protocol/specification#workspace_workspaceFolders)
@@ -156,7 +156,7 @@ impl Backend {
 
 							// if the original file has been updated more recently than the proclaimed last_updated time then we need to update the contents of 
 							if file_last_modified > css_metadata.last_updated {
-								match css_metadata.update_metadata(css_metadata_file_path) {
+								match css_metadata.update_metadata(css_metadata_file_path, &workspace_metadata) {
 									Ok(_) => (),
 									Err(error) => {
 										self.log_error(error).await;
@@ -199,12 +199,97 @@ impl Backend {
 
 					workspace_metadata.add_css_file(css_file_metadata)
 				} 
-
-				// TODO: do the HTML part
-				// TODO: do the references to eachother part
-				// TODO: look into each html file and find which ones reference it.
 			}
 		}
+
+		let html_metadata_map: HashMap<PathBuf, PathBuf> = grouped_files.map_html_files();
+
+		//TODO: Will have to find a way to re-pair up orphaned files that have been moved externally.
+
+		for html_file in &grouped_files.html_files {
+			match html_metadata_map.get_key_value(html_file) {
+				Some((_,html_metadata_file_path)) => {
+					match fs::read_to_string(html_metadata_file_path) {
+						Ok(contents) => {
+							// it exists so we can deserialize it
+							let mut html_metadata: HtmlMetaData = serde_json::from_str(&contents).unwrap();
+
+							// get the metadata of the original file
+							let html_file_metadata = fs::metadata(&html_metadata.absolute_path).unwrap();
+
+							let file_last_modified: DateTime<Utc> = html_file_metadata.modified().unwrap().into();
+
+							// if the original file has been updated more recently than the proclaimed last_updated time then we need to update the contents of 
+							if file_last_modified > html_metadata.last_updated {
+								match html_metadata.update_metadata(html_metadata_file_path, &workspace_metadata) {
+									Ok(_) => (),
+									Err(error) => {
+										self.log_error(error).await;
+										continue
+									}
+								};
+							}
+						},
+						Err(error) => {
+							self.log_error(format!("Error trying to read file ({:?}): {:?}", &html_metadata_file_path, error)).await;
+							continue
+						}
+					}
+
+				}, 
+				None => {
+					let id = workspace_metadata.get_next_available_html_id();
+
+					let file_name = id_to_json_file_name(&id);
+
+					let mut save_path = html_metadata_path.clone();
+					save_path.push(&file_name);
+
+					// create the file <id>.json
+					let html_metadata = match HtmlMetaData::create_metadata(&save_path, html_file, &id) {
+						Ok(value) => value,
+						Err(error) => {
+							self.log_error(error).await;
+							continue
+						}
+					};
+
+					let html_file_metadata = WorkspaceHtmlFile::parse(&html_metadata);
+
+					workspace_metadata.add_html_file(html_file_metadata)
+				} 
+
+			}
+		} 
+
+		// Update all the associations to each file
+		// HTML first, then CSS
+		let mut html_workspace_metadata_map: HashMap<usize, WorkspaceHtmlFile> = HashMap::new();
+		
+		for (index, html_file) in workspace_metadata.html_files.iter().enumerate() {
+			// This transforms a basic HTML file into one that contains any included stylesheets inside it
+			let new_metadata = match html_file.update(&workspace_metadata){
+				Ok(value) => value,
+				Err(error) => {
+					self.log_error(error).await;
+					continue
+				}
+			};
+
+			html_workspace_metadata_map.insert(index, new_metadata);
+		}
+
+		for (index, metdata_file) in html_workspace_metadata_map {
+			match workspace_metadata.modify_html_file(&metdata_file, &index) {
+				Ok(_) => (),
+				Err(error) => {
+					self.log_error(error).await;
+					continue
+				}
+			}
+		}
+
+		// TODO: do the references to eachother part
 
 		// TODO: Remove any files that no longer exist 
 		// they will have the same filename, but different id's

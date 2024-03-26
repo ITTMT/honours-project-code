@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{metadata::css_metadata::CssMetaData, SHARED_PATH};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct WorkspaceCssFile {
     pub id: u32,
     pub file_name: String,

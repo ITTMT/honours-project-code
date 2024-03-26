@@ -8,7 +8,7 @@ use cssparser::{ParseError, Parser, ParserInput, Token};
 use serde::{Deserialize, Serialize};
 use crate::file::create_dir_and_file;
 use self::{css_attribute::CssAttribute, css_file::CssFile, css_style::CssStyle};
-use super::Metadata;
+use super::workspace_metadata::{workspace_css_file::WorkspaceCssFile, WorkspaceMetaData};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct CssMetaData {
@@ -38,6 +38,8 @@ impl CssMetaData {
 		}
 	}
 
+
+    /// For the provided mutable `self`, modify all the `CssStyle`'s. The styles will be updated based on the contents of `new_styles`, if a style is not present in `new_styles`, that is indicative that is has been deleted and will be removed. 
     pub fn update_styles(&mut self, new_styles: Vec<CssStyle>) {
         let mut new_styles_map: HashMap<String, CssStyle> = HashMap::new();
 
@@ -67,10 +69,8 @@ impl CssMetaData {
             }
         }
     }
-}
 
-impl Metadata<CssMetaData> for CssMetaData {
-	fn create_metadata(metadata_path: &PathBuf, file_path: &PathBuf, id: &u32) -> Result<CssMetaData, String> {
+	pub fn create_metadata(metadata_path: &PathBuf, file_path: &PathBuf, id: &u32) -> Result<CssMetaData, String> {
 
 		match create_dir_and_file(&metadata_path) {
 			Ok(_) => (),
@@ -100,7 +100,7 @@ impl Metadata<CssMetaData> for CssMetaData {
 		};
 	}
 	
-	fn update_metadata(&mut self, metadata_path: &PathBuf) -> Result<CssMetaData, String> {
+	pub fn update_metadata(&mut self, metadata_path: &PathBuf, workspace_metadata: &WorkspaceMetaData) -> Result<WorkspaceCssFile, String> {
         let file_path = PathBuf::from(&self.absolute_path);
         
         let mut new_metadata = self.clone();
@@ -123,12 +123,12 @@ impl Metadata<CssMetaData> for CssMetaData {
             self.styles = None
         }
 
-
-
         match fs::write(&metadata_path, serde_json::to_string_pretty(&new_metadata).unwrap()) {
-			Ok(_) => return Ok(new_metadata),
+			Ok(_) => (),
 			Err(error) => return Err(format!("Error writing metadata to file: ({:?}) {:?}", &metadata_path, error))
 		};
+
+        Ok(WorkspaceCssFile::parse(&new_metadata))
 	}
 }
 
@@ -362,66 +362,3 @@ p {
 
 }
 /* #endregion */
-
-// Now I need to tokenize the CSS to be able to feed it into the metadata format.
-// Also need to make the workspace metadata format.
-
-/*
-This means I have to update these metadata files whenever
-    a html file is opened
-    a html file is saved
-    a css file is opened
-    a css file is saved
-    one of the concatenated css files are saved. They should never be opened without the html file being opened.
-
-
-    I will need to do a check then when a file opens,
-
-    if it's html do x
-    css do y
-
-
-When we save a html file, what can change that we need to keep track of for the sake of making concatenated files
-    what linked css files are contained in it
-    what inline styles there are
-
-
-When we save a css file...
-    what styles there are / were
-
-
-When we save a concatenated css file
-    what file the style belongs to might change
-
-    if we have a style sheet that is used by multiple pages we want to
-        provide warning that changing a style might affect other pages
-        try to find style sheets unique to each page and move the original "shared" style into it
-
-            e.g. we have a base.css file
-                h1 {
-                    background-color = red;
-                }
-
-            this file is referenced by 3 other pages
-            we want to change it to green on one page but keep it red on the other 2
-            so we need to move the style from the base.css file into individual files for each page.
-
-            It might be easier to provide a folder inside .bhc for storing base css style sheets that will automatically apply to each page
-            in the virtual view and save them individually into the actual files.
-
-            Rules being, every html file has a unique css that belongs to them, they can be lego blocked with shared style sheets stored inside
-            .bhc/.shared/ by some magic, maybe some autocomplete inside the css file to do include <x> and it automatically pastes the styles into the style sheet.
-
-
-    I've now made more work for myself,
-    if someone is installing this extension, they likely still have more than 1 file importing in a html file
-    do i need to check then if the file contains a unique imported file or just tell them, they should create a unique file
-    probably the latter,
-                Create warning saying: create a unique file somewhere and link it
-                Set up shared styles in the .bhc/.shared/ folder
-                to import a shared style sheet into the unique one, type !import <x> and it will paste the contents into the file
-                with this, it means I no longer need to create a separate virtual view... maybe. That's only true if they do follow that guideline,
-                otherwise multiple imports still need to be concatenated. Do a check then... if a file contains multiple imports, then we concatenate and make
-                a temp virtual file, otherwise we open the actual file, but we need to enforce a rule that in order for it to work, the sheets need to be unique
-                and not imported inside multiple html files.
-*/

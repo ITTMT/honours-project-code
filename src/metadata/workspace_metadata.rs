@@ -9,7 +9,7 @@ use crate::file::create_dir_and_file;
 
 use self::{workspace_css_file::WorkspaceCssFile, workspace_html_file::WorkspaceHtmlFile};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct WorkspaceMetaData {
     pub workspace_path: String,
 
@@ -62,15 +62,54 @@ impl WorkspaceMetaData {
         smallest_id
     }
 
-    // pub fn get_css_metadata(&self, css_file_path: &PathBuf) -> CssMetaData {
+    pub fn get_css_file_id(&self, absolute_path: &PathBuf) -> Option<u32> {
+        for css_metadata_file in &self.css_files {
+            if &PathBuf::from(&css_metadata_file.absolute_path) == absolute_path {
+                return Some(css_metadata_file.id)
+            }
+        }
         
+        None
+    }
 
+    pub fn get_html_file_id(&self, absolute_path: &PathBuf) -> Option<u32> {
+        for html_metadata_file in &self.html_files {
+            if &PathBuf::from(&html_metadata_file.absolute_path) == absolute_path {
+                return Some(html_metadata_file.id)
+            }
+        }
+        
+        None
+    }
 
-    // }
+    pub fn get_html_file_by_id(&self, id: &u32) -> Option<WorkspaceHtmlFile> {
+        self.html_files.iter().find(|file| &file.id == id).cloned()
+    }
 
-    
+    pub fn get_css_file_by_id(&self, id: &u32) -> Option<WorkspaceCssFile> {
+        self.css_files.iter().find(|file| &file.id == id).cloned()
+    }
+
     pub fn add_css_file(&mut self, css_file_metadata: WorkspaceCssFile) {
         self.css_files.push(css_file_metadata)
+    }
+
+    pub fn add_html_file(&mut self, html_file_metadata: WorkspaceHtmlFile) {
+        self.html_files.push(html_file_metadata)
+    }
+
+    pub fn modify_html_file(&mut self, new_metadata: &WorkspaceHtmlFile, index: &usize) -> Result<(), String> {
+        if let Some(metadata) = self.html_files.get_mut(*index) { 
+            metadata.id = new_metadata.id;
+            metadata.file_name = new_metadata.file_name.clone();
+            metadata.absolute_path = new_metadata.absolute_path.clone();
+            metadata.css_files = new_metadata.css_files.clone();
+
+            Ok(())
+
+        } else {
+            Err(String::from("Error trying to update Workspace HTML File: Index out of bounds"))
+        }
     }
 
     /// Save the WorkspaceMetaData back to `meta.json`
