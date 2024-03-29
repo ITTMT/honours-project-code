@@ -126,12 +126,12 @@ impl LanguageServer for Backend {
 
                 let css_file_url = Url::parse(css_file_path.to_str().unwrap()).unwrap();
 
-                let params = BhcShowDocumentParams { uri: css_file_url };
+                // let params = BhcShowDocumentParams { uri: css_file_url };
 
-                match self.client.send_request::<bhc_commands::BhcShowDocumentRequest>(params).await {
-                    Ok(_) => (),
-                    Err(error) => self.log_error(format!("Error occurred trying to open CSS file: {}", error)).await,
-                };
+                // match self.client.send_request::<bhc_commands::BhcShowDocumentRequest>(params).await {
+                //     Ok(_) => (),
+                //     Err(error) => self.log_error(format!("Error occurred trying to open CSS file: {}", error)).await,
+                // };
             },
 
             EXT_CSS => {

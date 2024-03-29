@@ -7,7 +7,9 @@ use self::{css_metadata::CssMetaData, html_metadata::HtmlMetaData};
 pub mod css_metadata;
 pub mod workspace_metadata;
 pub mod html_metadata;
+pub mod file_metadata;
 
+// TODO: Make the absolute_path of all the metadata the same, some seem to be using unix syntax, others using windows 
 
 #[derive(Debug, PartialEq)]
 pub struct GroupedFiles {

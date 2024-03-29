@@ -132,8 +132,58 @@ impl CssMetaData {
 	}
 }
 
-// Also sorts the styles and attributes in alphabetical order
+//TODO: Generate a css string from a Vec<CssMetaData>, will need to turn it into a dictionary and then back to sorted vec grouping all the same tags 
+pub fn merge_css_metadata(metadata_files: &Vec<CssMetaData>) -> Result<Vec<CssStyle>, String> {
 
+    // Tag , Attributes
+
+    /*
+        h1 {
+            background-color: red;
+            background-color: green;
+            font-size: 14pt;
+            font-family: ...;
+        }
+    
+     */
+    let mut css_map: HashMap<String, Vec<CssAttribute>> = HashMap::new();
+
+    for metadata_file in metadata_files {
+        if let Some(styles) = &metadata_file.styles {
+            styles
+            .iter()
+            .for_each( |style| {
+                let key = style.tag.clone();
+
+                let existing_style = css_map.entry(key).or_insert(Vec::new());
+
+                style.attributes.iter().for_each(|attribute| {
+                    existing_style.push(attribute.clone());
+                });
+            })
+        }
+    }
+
+    let mut css_vec: Vec<CssStyle> = css_map
+    .iter_mut()
+    .map(|(kv, x)| {
+        x.sort_by_key(|x| x.name.clone());
+        
+        CssStyle {
+            tag: kv.clone(),
+            attributes: x.clone(),
+        }
+    })
+    .collect();
+
+    css_vec.sort_by_key(|x| x.tag.clone());
+
+
+    Ok(css_vec)
+}
+
+
+// Also sorts the styles and attributes in alphabetical order
 pub fn parse_sheet<'a>(parser: &mut Parser) -> Result<Option<Vec<CssStyle>>, ParseError<'a, String>> {
     let mut styles: Vec<CssStyle> = Vec::new();
     let mut style = CssStyle::new();
@@ -242,7 +292,7 @@ mod tests {
     use chrono::DateTime;
     use cssparser::{Parser, ParserInput};
 
-    use super::{CssAttribute, CssFile, CssMetaData, parse_sheet, CssStyle};
+    use super::{merge_css_metadata, parse_sheet, CssAttribute, CssFile, CssMetaData, CssStyle};
 
     #[test]
     fn test_serialize_deserialize() {
@@ -357,6 +407,22 @@ p {
 
         assert_eq!(expected, metadata);
 
+    }
+
+    #[test]
+    fn merge_css_metadata_test() {
+        let attribute_1 = CssAttribute {
+            name: String::from("background-color"),
+            values: vec![String::from("red"), String::from("green")],
+            source: None,
+            is_overwritten: None,
+        };
+
+
+
+        let input: Vec<CssMetaData> = vec![];
+
+        let output = merge_css_metadata(&input).unwrap();
     }
 
 

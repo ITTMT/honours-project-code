@@ -32,7 +32,7 @@ export function activate(context: vscode.ExtensionContext) {
 		debug: run,
 	};
 
-	// use this for later [https://github.com/microsoft/vscode-extension-samples/tree/main/decorator-sample]
+	// TODO: use this for later [https://github.com/microsoft/vscode-extension-samples/tree/main/decorator-sample]
 	// This will be helpful in colouring the lines for each file.
 
 	const clientOptions: LanguageClientOptions = {

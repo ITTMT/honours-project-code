@@ -1,22 +1,11 @@
 use crate::{Backend, VIRTUAL_PATH};
 use html5gum::{HtmlString, Token, Tokenizer};
-use path_absolutize::Absolutize;
 use std::{
-    collections::HashMap, ffi::OsStr, fs::{self, File}, io::{BufReader, Read}, ops::Deref, path::{Component, PathBuf}};
+    ffi::OsStr, fs::{self, File}, io::{BufReader, Read}, ops::Deref, path::{Component, PathBuf}};
 use tower_lsp::lsp_types::{DidOpenTextDocumentParams, TextDocumentItem};
 
-struct FormattedCssFile {
-    file_path: PathBuf,
-    included_files: Vec<FileMetaData>,
-    lines: HashMap<u32, FileMetaData>,
-}
 
-struct FileMetaData {
-    id: u32,
-    file_name: String,
-    is_shared: bool,
-}
-
+//TODO: I need to make metadata for the virtual file to act as a "staging" area for changes that are made but save has not been pressed
 //TODO: Think about what is needed to send back to the client to get the colouring of lines correct
 // for each line we need to know its owner, 
 
@@ -129,8 +118,6 @@ fn find_absolute_path(document_path: &PathBuf, css_path: &PathBuf) -> Result<Pat
         return Ok(css_path.clone());
     }
 
-    
-
     if css_path.is_relative() {
         let css_components = css_path.components();
         let mut actual_path = PathBuf::new();
@@ -152,18 +139,13 @@ fn find_absolute_path(document_path: &PathBuf, css_path: &PathBuf) -> Result<Pat
         let final_path = document_dir.clone().join(actual_path);
 
         return Ok(final_path)
-
-        // match css_path.absolutize_from(document_path) {
-        //     Ok(value) => return Ok(value.to_path_buf()),
-        //     Err(error) => return Err(format!("Error trying` to find absolute path for {:?}: {:?}", css_path, error)),
-        // };
     }
 
     Err(format!("Error trying to find CSS File: {:?}", css_path))
 }
 
 
-    
+
 pub fn generate_css_string(css_files: &Vec<PathBuf>) -> Result<String, String> {
     let mut concatenated_string: String = String::new();
 
