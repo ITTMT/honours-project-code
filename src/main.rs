@@ -6,6 +6,7 @@ mod workspace;
 
 use bhc_commands::BhcShowDocumentParams;
 use logging::Logging;
+use metadata::file_metadata::FormattedCssFile;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
@@ -80,7 +81,7 @@ impl LanguageServer for Backend {
     async fn initialized(&self, _: InitializedParams) {
 
         // Give time to attach debugger
-        std::thread::sleep(std::time::Duration::from_secs(5));
+        // std::thread::sleep(std::time::Duration::from_secs(5));
 
         self.log_info("BHC language server initialized!").await;
 
@@ -118,20 +119,25 @@ impl LanguageServer for Backend {
                 };
 
                 // There are no CSS files to open anything
-                if css_file_path.as_os_str().is_empty() {
+                if css_file_path.is_none() {
                     return
                 }
 
                 //TODO: This needs to pass back more information to colour the page.
 
-                let css_file_url = Url::parse(css_file_path.to_str().unwrap()).unwrap();
+                if let Some(css_path) = css_file_path {
+                    let css_file_url = Url::parse(css_path.to_str().unwrap()).unwrap();
 
-                // let params = BhcShowDocumentParams { uri: css_file_url };
-
-                // match self.client.send_request::<bhc_commands::BhcShowDocumentRequest>(params).await {
-                //     Ok(_) => (),
-                //     Err(error) => self.log_error(format!("Error occurred trying to open CSS file: {}", error)).await,
-                // };
+                    let params = BhcShowDocumentParams { 
+                        uri: css_file_url,
+                        file: FormattedCssFile::new() 
+                    };
+    
+                    match self.client.send_request::<bhc_commands::BhcShowDocumentRequest>(params).await {
+                        Ok(_) => (),
+                        Err(error) => self.log_error(format!("Error occurred trying to open CSS file: {}", error)).await,
+                    };
+                }
             },
 
             EXT_CSS => {

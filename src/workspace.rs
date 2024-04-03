@@ -156,7 +156,7 @@ impl Backend {
 
 							// if the original file has been updated more recently than the proclaimed last_updated time then we need to update the contents of 
 							if file_last_modified > css_metadata.last_updated {
-								match css_metadata.update_metadata(css_metadata_file_path, &workspace_metadata) {
+								match css_metadata.update_metadata(css_metadata_file_path) {
 									Ok(_) => (),
 									Err(error) => {
 										self.log_error(error).await;

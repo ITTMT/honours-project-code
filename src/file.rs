@@ -1,4 +1,4 @@
-use crate::{Backend, VIRTUAL_PATH};
+use crate::{metadata::css_metadata::{generate_css_string, get_all_metadata, get_metadata_files, CssMetaData}, Backend, VIRTUAL_PATH};
 use html5gum::{HtmlString, Token, Tokenizer};
 use std::{
     ffi::OsStr, fs::{self, File}, io::{BufReader, Read}, ops::Deref, path::{Component, PathBuf}};
@@ -10,7 +10,7 @@ use tower_lsp::lsp_types::{DidOpenTextDocumentParams, TextDocumentItem};
 // for each line we need to know its owner, 
 
 impl Backend {
-    pub async fn get_css_file(&self, params: DidOpenTextDocumentParams) -> Result<PathBuf, String> {
+    pub async fn get_css_file(&self, params: DidOpenTextDocumentParams) -> Result<Option<PathBuf>, String> {
         let file_path = file_to_pathbuf(&params.text_document);
 
         if let Some(file_path_root) = file_path.parent(){
@@ -31,15 +31,22 @@ impl Backend {
             //TODO: Add logic here to make new file if multiple css files, or just return normal file
 
             match css_files.len() {
-                0 => return Ok(PathBuf::new()),
-                1 => return Ok(css_files[0].clone()), //TODO: Add logic to return file with metadata.
+                0 => return Ok(None),
+                1 => return Ok(Some(css_files[0].clone())), //TODO: Add logic to return file with metadata.
                 _ => {
-                    let css_string = match generate_css_string(&css_files) {
+                    let css_metadata_files = match get_metadata_files(&css_files, &workspace_path) {
                         Ok(value) => value,
-                        Err(error) => return Err(error),
+                        Err(error) => return Err(error)
                     };
 
-                    return save_css_file(&css_string, &file_destination);
+                    if let Some(metadata) = css_metadata_files {
+                        let css_string = generate_css_string(&metadata);
+                        
+                        match save_css_file(&css_string, &file_destination) {
+                            Ok(value) => return Ok(Some(value)),
+                            Err(error) => return Err(error)
+                        };
+                    }
                 }
             }
         }; 
@@ -142,25 +149,6 @@ fn find_absolute_path(document_path: &PathBuf, css_path: &PathBuf) -> Result<Pat
     }
 
     Err(format!("Error trying to find CSS File: {:?}", css_path))
-}
-
-
-
-pub fn generate_css_string(css_files: &Vec<PathBuf>) -> Result<String, String> {
-    let mut concatenated_string: String = String::new();
-
-    for (i, file) in css_files.iter().enumerate() {
-        match open_file(&file) {
-            Ok(value) => concatenated_string.push_str(&value),
-            Err(error) => return Err(error),
-        }
-
-        if i != css_files.len() - 1 {
-            concatenated_string.push_str("\n");
-        }
-    }
-
-    Ok(concatenated_string)
 }
 
 pub fn save_css_file(css_string: &str, save_path: &PathBuf) -> Result<PathBuf, String> {
