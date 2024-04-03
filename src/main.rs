@@ -6,7 +6,6 @@ mod workspace;
 
 use bhc_commands::BhcShowDocumentParams;
 use logging::Logging;
-use metadata::file_metadata::FormattedCssFile;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
@@ -105,12 +104,11 @@ impl LanguageServer for Backend {
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         self.log_info(format!("File Opened: {}", params.text_document.uri)).await;
 
-        // TODO: If HTML, then we need to check the HTML file metadata, and any imported CSS files from it. If there are more than 1 imported css file in the html file, we need to make a "virtual file" which gets saved to VIRTUAL_PATH, IT CURRENTLY READS THE HTML FILE DIRECTLY (WRONG)
         match params.text_document.language_id.as_str() {
             EXT_HTML => {
                 //TODO: If it contains multiple then we put it into the .bhc/.virtual folder.
 
-                let css_file_path = match self.get_css_file(params).await {
+                let formatted_css_file = match self.get_css_file(params).await {
                     Ok(value) => value,
                     Err(error) => {
                         self.log_error(error).await;
@@ -119,18 +117,18 @@ impl LanguageServer for Backend {
                 };
 
                 // There are no CSS files to open anything
-                if css_file_path.is_none() {
+                if formatted_css_file.is_none() {
                     return
                 }
 
                 //TODO: This needs to pass back more information to colour the page.
 
-                if let Some(css_path) = css_file_path {
-                    let css_file_url = Url::parse(css_path.to_str().unwrap()).unwrap();
+                if let Some(formatted_file) = formatted_css_file {
+                    let css_file_url = Url::parse(&formatted_file.absolute_path).unwrap();
 
                     let params = BhcShowDocumentParams { 
                         uri: css_file_url,
-                        file: FormattedCssFile::new() 
+                        file: formatted_file
                     };
     
                     match self.client.send_request::<bhc_commands::BhcShowDocumentRequest>(params).await {

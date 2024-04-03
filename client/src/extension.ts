@@ -1,3 +1,4 @@
+import { start } from 'repl';
 import * as vscode from 'vscode';
 import {
 	Executable,
@@ -32,9 +33,6 @@ export function activate(context: vscode.ExtensionContext) {
 		debug: run,
 	};
 
-	// TODO: use this for later [https://github.com/microsoft/vscode-extension-samples/tree/main/decorator-sample]
-	// This will be helpful in colouring the lines for each file.
-
 	const clientOptions: LanguageClientOptions = {
 		documentSelector: [
 			{scheme: "file", language: "html"},
@@ -49,14 +47,40 @@ export function activate(context: vscode.ExtensionContext) {
 	client = new LanguageClient("bhc-language-server", "bhc language server", serverOptions, clientOptions);
 
 	client.start();
+
+	// TODO: use this for later [https://github.com/microsoft/vscode-extension-samples/tree/main/decorator-sample]
+	const colorChoices = vscode.window.createTextEditorDecorationType({
+		rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+		backgroundColor: '#FF000050'
+	});
 	
 	// Custom command to open a text document, need this because I want to be able to open a window side by side to a document rather than override a currently open document.
 	client.onRequest("bhc/ShowDocumentRequest", async (handler: BhcShowDocumentParams) => {
 		await vscode.workspace.openTextDocument(handler.uri).then(async document => {
-			await vscode.window.showTextDocument(document, {
+			let editor = await vscode.window.showTextDocument(document, {
 				viewColumn: vscode.ViewColumn.Two,
 				preserveFocus: true
-			})
+			});
+
+			const decorations: vscode.DecorationOptions[] = [];
+
+			for (let line of handler.file.lines) {
+				if (line.owner != null && line.owner == 3) {
+					const fill_position = editor.document.lineAt(line.line_number);
+
+					const decoration = { range: new vscode.Range(
+						fill_position.lineNumber, 
+						fill_position.firstNonWhitespaceCharacterIndex, 
+						fill_position.lineNumber, 
+						fill_position.range.end.character
+						)
+					}
+
+					decorations.push(decoration);
+				}
+			}
+
+			editor.setDecorations(colorChoices, decorations);
 		});
 	});
 
@@ -69,19 +93,42 @@ export function deactivate(): Thenable<void> | undefined {
 	return client.stop();
 }
 
+
 type BhcShowDocumentParams = {
-	uri: vscode.Uri
-}
-``
-
-function xyz(event) {
-
-	let x = vscode.window.tabGroups.all.flatMap(({ tabs }) => tabs.map(tab => tab.group))
-
-	console.log(x);
+	uri: vscode.Uri,
+	file: FormattedCssFile
 }
 
-vscode.workspace.onDidOpenTextDocument(xyz);
+type FormattedCssFile = {
+	included_files: FileMetaData[],
+	styles: CssStyleExtended[],
+	lines: LineInformation[]
+}
+
+type FileMetaData = {
+	id: number,
+	file_name: string,
+	absolute_path: string
+}
+
+type CssStyleExtended = {
+	owner: number | null,
+	tag: string,
+	attributes: CssAttributeExtended[]
+}
+
+type LineInformation = {
+	line_number: number,
+	owner: number | null
+}
+
+type CssAttributeExtended = {
+	owner: number,
+	name: string,
+	value: string,
+	source: number | null
+	is_overwritten: boolean | null
+}
 
 // rule 1, if we open a file, we open its corresponding css file in column 2
 // rule 2, if we open another file, we open its corresponding css file in column 2 as well

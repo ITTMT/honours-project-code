@@ -14,7 +14,6 @@ impl Request for BhcShowDocumentRequest {
 
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
 pub struct BhcShowDocumentParams {
-    /// The actual message
     pub uri: Url,
     pub file: FormattedCssFile
 }

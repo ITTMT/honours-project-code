@@ -1,8 +1,9 @@
-use crate::{metadata::css_metadata::{generate_css_string, get_all_metadata, get_metadata_files, CssMetaData}, Backend, VIRTUAL_PATH};
 use html5gum::{HtmlString, Token, Tokenizer};
 use std::{
-    ffi::OsStr, fs::{self, File}, io::{BufReader, Read}, ops::Deref, path::{Component, PathBuf}};
+    ffi::OsStr, fs::{self, File}, ops::Deref, path::{Component, PathBuf}};
 use tower_lsp::lsp_types::{DidOpenTextDocumentParams, TextDocumentItem};
+
+use crate::{metadata::{css_metadata::get_metadata_files, file_metadata::FormattedCssFile}, Backend, VIRTUAL_PATH};
 
 
 //TODO: I need to make metadata for the virtual file to act as a "staging" area for changes that are made but save has not been pressed
@@ -10,7 +11,7 @@ use tower_lsp::lsp_types::{DidOpenTextDocumentParams, TextDocumentItem};
 // for each line we need to know its owner, 
 
 impl Backend {
-    pub async fn get_css_file(&self, params: DidOpenTextDocumentParams) -> Result<Option<PathBuf>, String> {
+    pub async fn get_css_file(&self, params: DidOpenTextDocumentParams) -> Result<Option<FormattedCssFile>, String> {
         let file_path = file_to_pathbuf(&params.text_document);
 
         if let Some(file_path_root) = file_path.parent(){
@@ -28,11 +29,22 @@ impl Backend {
                 Err(error) => return Err(error),
             };
 
-            //TODO: Add logic here to make new file if multiple css files, or just return normal file
-
             match css_files.len() {
                 0 => return Ok(None),
-                1 => return Ok(Some(css_files[0].clone())), //TODO: Add logic to return file with metadata.
+                1 => {
+                    let css_metadata_files = match get_metadata_files(&css_files, &workspace_path) {
+                        Ok(value) => value,
+                        Err(error) => return Err(error)
+                    };
+
+                    if let Some(metadata) = css_metadata_files {
+                        let mut formatted_file = FormattedCssFile::generate_formatted_file(&metadata);
+
+                        formatted_file.absolute_path = css_files.first().unwrap().to_str().unwrap().to_string();
+                    
+                        return Ok(Some(formatted_file))
+                    }
+                },
                 _ => {
                     let css_metadata_files = match get_metadata_files(&css_files, &workspace_path) {
                         Ok(value) => value,
@@ -40,35 +52,25 @@ impl Backend {
                     };
 
                     if let Some(metadata) = css_metadata_files {
-                        let css_string = generate_css_string(&metadata);
+                        let mut formatted_file = FormattedCssFile::generate_formatted_file(&metadata);
+
+                        let css_string = formatted_file.to_css_string();
                         
                         match save_css_file(&css_string, &file_destination) {
-                            Ok(value) => return Ok(Some(value)),
+                            Ok(value) => {
+                                formatted_file.absolute_path = value.to_str().unwrap().to_string();
+
+                                return Ok(Some(formatted_file))
+                            },
                             Err(error) => return Err(error)
                         };
-                    }
+                    } 
                 }
             }
         }; 
 
         Err(format!("Could not get css file for file: {:?}", file_path))
     }
-}
-
-pub fn open_file(file_path: &PathBuf) -> Result<String, String> {
-    let file = match File::open(file_path) {
-        Ok(result) => result,
-        Err(error) => return Err(format!("File Opening Error: Unable to open file ({:?}) - {}", file_path, error)),
-    };
-
-    let mut buf_reader = BufReader::new(file);
-    let mut contents = String::new();
-    match buf_reader.read_to_string(&mut contents) {
-        Ok(buffer) => buffer,
-        Err(error) => return Err(format!("File Opening Error: Unable to read file ({:?}) - {}", file_path, error)),
-    };
-
-    Ok(contents)
 }
 
 pub fn get_css_file_paths(absolute_path_of_html: &PathBuf, file_contents: &str) -> Result<Vec<PathBuf>, String> {
@@ -266,9 +268,7 @@ mod tests {
 
     use std::path::PathBuf;
 
-    use tower_lsp::LspService;
-
-    use crate::{file::{find_absolute_path, get_css_file_paths, get_full_path, save_css_file}, Backend};
+    use crate::file::{find_absolute_path, get_css_file_paths, get_full_path, save_css_file};
 
     #[test]
     fn test_find_absolute_path() {

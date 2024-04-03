@@ -8,7 +8,7 @@ use cssparser::{ParseError, Parser, ParserInput, Token};
 use serde::{Deserialize, Serialize};
 use crate::{file::{create_dir_and_file, recursive_file_search}, CSS_METADATA_PATH};
 use self::{css_attribute::CssAttribute, css_file::CssFile, css_style::CssStyle};
-use super::workspace_metadata::{workspace_css_file::WorkspaceCssFile, WorkspaceMetaData};
+use super::workspace_metadata::workspace_css_file::WorkspaceCssFile;
 
 //TODO: Consider using lazy_static crate in the future, to cache the metadata, so searching through it doesn't require iteratively looking through many files 
 
@@ -192,85 +192,6 @@ pub fn get_metadata_files(file_paths: &Vec<PathBuf>, workspace_path: &PathBuf) -
     }
 }
 
-//TODO: Generate a css string from a Vec<CssMetaData>, will need to turn it into a dictionary and then back to sorted vec grouping all the same tags 
-pub fn merge_css_metadata(metadata_files: &Vec<CssMetaData>) -> Vec<CssStyle> {
-
-    // Tag , Attributes
-    let mut css_map: HashMap<String, Vec<CssAttribute>> = HashMap::new();
-
-    for metadata_file in metadata_files {
-        if let Some(styles) = &metadata_file.styles {
-            styles
-            .iter()
-            .for_each( |style| {
-                let key = style.tag.clone();
-
-                let existing_style = css_map.entry(key).or_insert(Vec::new());
-
-                style.attributes.iter().for_each(|attribute| {
-                    existing_style.push(attribute.clone());
-                });
-            })
-        }
-    }
-
-    let mut css_vec: Vec<CssStyle> = css_map
-    .iter_mut()
-    .map(|(key, value)| {
-        value.sort_by_key(|attribute| attribute.name.clone());
-        
-        CssStyle {
-            tag: key.clone(),
-            attributes: value.clone(),
-        }
-    })
-    .collect();
-
-    css_vec.sort_by_key(|x| x.tag.clone());
-
-    css_vec
-}
-
-pub fn generate_css_string(css_metadatas: &Vec<CssMetaData>) -> String{
-    let merged_metadata = merge_css_metadata(css_metadatas);
-
-    let mut css_string = String::new();
-    let mut is_last_attribute = false;
-
-    // TODO: Also need to generate colouring metadata side-by-side so we can get the line numbers
-    merged_metadata
-    .iter()
-    .for_each(|style| {
-        css_string.push_str(&style.tag);
-        css_string.push_str(" {\n\t");
-        style
-        .attributes
-        .iter()
-        .enumerate()
-        .for_each(|(attr_index, attribute)| {
-            if attr_index == style.attributes.len() - 1 { is_last_attribute = true }
-
-            attribute.values
-            .iter()
-            .enumerate()
-            .for_each(|(value_index, value)| {
-                css_string.push_str(&attribute.name);
-                css_string.push_str(": ");
-                css_string.push_str(&value);
-                if is_last_attribute && value_index == attribute.values.len() - 1 {
-                    css_string.push_str(";\n"); //TODO: Add a function that tracks indentation
-                } else {
-                    css_string.push_str(";\n\t");
-                }
-            });
-        });
-        css_string.push_str("}\n");
-        is_last_attribute = false;
-    });
-
-    css_string
-}
-
 
 // TODO: Add more branching for more of the potential tokens as it currently only works with very basic css
 // Also sorts the styles and attributes in alphabetical order
@@ -379,12 +300,10 @@ fn parse_attribute_value<'a>(parser: &mut Parser) -> Result<String, ParseError<'
 /* #region Unit Tests */
 #[cfg(test)]
 mod tests {
-    use chrono::{DateTime, Utc};
+    use chrono::DateTime;
     use cssparser::{Parser, ParserInput};
 
-    use crate::{metadata::css_metadata::generate_css_string};
-
-    use super::{merge_css_metadata, parse_sheet, CssAttribute, CssFile, CssMetaData, CssStyle};
+    use super::{parse_sheet, CssAttribute, CssFile, CssMetaData, CssStyle};
 
     #[test]
     fn test_serialize_deserialize() {
@@ -501,124 +420,7 @@ p {
 
     }
 
-    #[test]
-    fn merge_css_metadata_test() {
-
-        /*
-        h1 {
-            background-color: red;
-            background-color: green;
-            font-size: 14pt;
-            font-family: ...;
-        }
-        */
-
-        let attribute_1 = CssAttribute {
-            name: String::from("background-color"),
-            values: vec![String::from("red"), String::from("green")],
-            source: None,
-            is_overwritten: None,
-        };
-
-        let style_1 = CssStyle {
-            tag: String::from("h1"),
-            attributes: vec![attribute_1.clone()]
-        };
-
-        let attribute_2 = CssAttribute {
-            name: String::from("font-size"),
-            values: vec![String::from("14pt")],
-            source: None,
-            is_overwritten: None
-        };
-
-        let style_2 = CssStyle {
-            tag: String::from("h1"),
-            attributes: vec![attribute_2.clone()]
-        };
-
-        let css_metadata_1 = CssMetaData {
-            id: 0,
-            file_name: String::new(),
-            absolute_path: String::new(),
-            last_updated: Utc::now(),
-            imported_sheets: None,
-            styles: Some(vec![style_1])
-        };
-
-        let css_metadata_2 = CssMetaData {
-            id: 1,
-            file_name: String::new(),
-            absolute_path: String::new(),
-            last_updated: Utc::now(),
-            imported_sheets: None,
-            styles: Some(vec![style_2])
-        };
-
-        let expected_style = CssStyle {
-            tag: String::from("h1"),
-            attributes: vec![attribute_1.clone(), attribute_2.clone()]
-        };
-
-
-        let expected: Vec<CssStyle> = vec![expected_style];
-
-
-        let output = merge_css_metadata(&vec![css_metadata_1, css_metadata_2]);
-
-        println!("{output:?}");
-
-        assert_eq!(expected, output);
-    }
-
-    #[test]
-    fn generate_css_string_test() {
-        let attribute_1 = CssAttribute {
-            name: String::from("background-color"),
-            values: vec![String::from("red"), String::from("green")],
-            source: None,
-            is_overwritten: None,
-        };
-
-        let style_1 = CssStyle {
-            tag: String::from("h1"),
-            attributes: vec![attribute_1.clone()]
-        };
-
-        let attribute_2 = CssAttribute {
-            name: String::from("font-size"),
-            values: vec![String::from("14pt")],
-            source: None,
-            is_overwritten: None
-        };
-
-        let style_2 = CssStyle {
-            tag: String::from("h1"),
-            attributes: vec![attribute_2.clone()]
-        };
-
-        let css_metadata_1 = CssMetaData {
-            id: 0,
-            file_name: String::new(),
-            absolute_path: String::new(),
-            last_updated: Utc::now(),
-            imported_sheets: None,
-            styles: Some(vec![style_1])
-        };
-
-        let css_metadata_2 = CssMetaData {
-            id: 1,
-            file_name: String::new(),
-            absolute_path: String::new(),
-            last_updated: Utc::now(),
-            imported_sheets: None,
-            styles: Some(vec![style_2])
-        };
-
-    let expected = "h1 {\n\tbackground-color: red;\n\tbackground-color: green;\n\tfont-size: 14pt;\n}\n";
-
-    assert_eq!(generate_css_string(&vec![css_metadata_1, css_metadata_2]), expected);
-    }
+    
 
 }
 /* #endregion */

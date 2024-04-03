@@ -111,7 +111,7 @@ impl Backend {
 
 		let css_metadata_path = &workspace_path.join(CSS_METADATA_PATH);
 		let html_metadata_path = &workspace_path.join(HTML_METADATA_PATH);
-		let shared_path = &workspace_path.join(SHARED_PATH);
+		let _shared_path = &workspace_path.join(SHARED_PATH);
 		let workspace_metadata_path = &workspace_path.join(METADATA_PATH);
 
 		// this is just for initialising, it doesn't need to be a provider of truth
