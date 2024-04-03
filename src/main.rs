@@ -14,7 +14,7 @@ use tower_lsp::{Client, LanguageServer, LspService, Server};
 const METADATA_PATH: &'static str = ".bhc/.meta/meta.json";
 const CSS_METADATA_PATH: &'static str = ".bhc/.meta/css";
 const HTML_METADATA_PATH: &'static str = ".bhc/.meta/html";
-const SHARED_PATH: &'static str = ".bhc/.shared";
+const SHARED_PATH: &'static str = ".bhc/.shared"; //TODO: Make the user have an elective shared folder to fit their folder structure. Will need to make a sidebar tool, not for now
 const VIRTUAL_PATH: &'static str = ".bhc/.virtual";
 
 const EXT_HTML: &'static str = "html";
@@ -167,12 +167,12 @@ impl LanguageServer for Backend {
         self.log_info("watched files have changed!").await;
     }
 
-    async fn will_save(&self, params: WillSaveTextDocumentParams) {
-        self.log_info(format!("Saving File: {}", params.text_document.uri)).await;
-    }
 
     async fn did_save(&self, x: DidSaveTextDocumentParams) {
         self.log_info(format!("Saved files changed: {}", x.text_document.uri)).await;
+
+        //TODO: Add updating the metadata files when saved
+        //TODO: Add updating the original files when virtual file is saved, we know virtual file by their paths
     }
 }
 /* #endregion */
