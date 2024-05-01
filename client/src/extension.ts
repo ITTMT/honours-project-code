@@ -48,12 +48,31 @@ export function activate(context: vscode.ExtensionContext) {
 
 	client.start();
 
-	// TODO: use this for later [https://github.com/microsoft/vscode-extension-samples/tree/main/decorator-sample]
-	const colorChoices = vscode.window.createTextEditorDecorationType({
-		rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-		backgroundColor: '#FF000050'
-	});
-	
+	const colorChoices: vscode.TextEditorDecorationType[] = [];
+
+	// currently only 10 max files, maybe do some pseudo random color generation. I want the same colours to be present every time.
+	const colors = [
+		'#FF000050', 
+		'#00FF0050', 
+		'#0000FF50', 
+		'#FFFF0050', 
+		'#FF00FF50', 
+		'#00FFFF50', 
+		'#FFFFFF50', 
+		'#50008550', 
+		'#FF800050',
+		'#69003650'
+	]
+
+	for (let color of colors) {
+		colorChoices.push(
+			vscode.window.createTextEditorDecorationType({
+				rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+				backgroundColor: color
+			})
+		);
+	}
+
 	// Custom command to open a text document, need this because I want to be able to open a window side by side to a document rather than override a currently open document.
 	client.onRequest("bhc/ShowDocumentRequest", async (handler: BhcShowDocumentParams) => {
 		await vscode.workspace.openTextDocument(handler.uri).then(async document => {
@@ -62,11 +81,22 @@ export function activate(context: vscode.ExtensionContext) {
 				preserveFocus: true
 			});
 
-			const decorations: vscode.DecorationOptions[] = [];
+			const uniqueIds: number[] = [... new Set(handler.file.included_files.map(x => x.id))];
 
-			for (let line of handler.file.lines) {
-				if (line.owner != null && line.owner == 1) {
+			const ownerKeyValues: Record<number, number> = uniqueIds.reduce((acc, ownerId, index) => {
+				acc[ownerId] = index;
+				return acc;
+			}, {});
+
+			let decorations: vscode.DecorationOptions[][] = [];
+
+			for (const line of handler.file.lines) {
+				if (line.owner != null) {
 					const fill_position = editor.document.lineAt(line.line_number);
+
+					if (!decorations[ownerKeyValues[line.owner]]) {
+						decorations[ownerKeyValues[line.owner]] = [];
+					}
 
 					const decoration = { range: new vscode.Range(
 						fill_position.lineNumber, 
@@ -76,11 +106,13 @@ export function activate(context: vscode.ExtensionContext) {
 						)
 					}
 
-					decorations.push(decoration);
+					decorations[ownerKeyValues[line.owner]].push(decoration);
 				}
 			}
 
-			editor.setDecorations(colorChoices, decorations);
+			for (const key in ownerKeyValues) {
+				editor.setDecorations(colorChoices[ownerKeyValues[key]], decorations[ownerKeyValues[key]]);
+			}
 		});
 	});
 
