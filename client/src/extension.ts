@@ -5,15 +5,12 @@ import {
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
-	RequestType,
-	DocumentSelector
 } from 'vscode-languageclient/node';
 
 let client: LanguageClient;
 let windows: vscode.TextEditor[] = new Array();
 
-export function activate(context: vscode.ExtensionContext) {
-	const traceOutputChannel = vscode.window.createOutputChannel("BHC LSP Trace");
+export function activate() {
 	const command = process.env.SERVER_PATH || "bhc-language-server";
 
 	vscode.commands.registerCommand('bhc.activate', () => {})
@@ -41,7 +38,6 @@ export function activate(context: vscode.ExtensionContext) {
 		synchronize: {
 			fileEvents: vscode.workspace.createFileSystemWatcher("**/.clientrc"),
 		},
-		traceOutputChannel,
 	};
 
 	client = new LanguageClient("bhc-language-server", "bhc language server", serverOptions, clientOptions);
