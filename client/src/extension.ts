@@ -65,7 +65,7 @@ export function activate(context: vscode.ExtensionContext) {
 			const decorations: vscode.DecorationOptions[] = [];
 
 			for (let line of handler.file.lines) {
-				if (line.owner != null && line.owner == 3) {
+				if (line.owner != null && line.owner == 1) {
 					const fill_position = editor.document.lineAt(line.line_number);
 
 					const decoration = { range: new vscode.Range(
